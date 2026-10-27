@@ -246,6 +246,35 @@ Mock status starts queued, then advances through the job stages. A ready status 
 ```
 
 The mock lesson response uses `lesson_plan.topic`, not `lesson_plan.title`, and a string `notes` field. It contains three scenes (`title_card`, `code_walkthrough`, `diagram`), with audio manifest durations of 5, 6, and 6 seconds and empty audio URLs. Notes in the mock fixture are serialized JSON text. The mock language is selected from the generation request.
+Example ready lesson (`GET /jobs/{id}/lesson`, shape from `src/api/types.ts`):
+
+```json
+{
+  "lesson_plan": {
+    "topic": "How does a Python loop work?",
+    "level": "beginner",
+    "language": "hi",
+    "target_duration_seconds": 45,
+    "scenes": [
+      { "id": "s1", "type": "title_card", "heading": "...", "narration": "..." },
+      { "id": "s2", "type": "code_walkthrough", "heading": "...", "narration": "...",
+        "code": "for i in range(3):\n    print(i)", "highlight_lines": [1] },
+      { "id": "s3", "type": "diagram", "heading": "...", "narration": "...",
+        "items": [{ "label": "Start" }, { "label": "Repeat" }] }
+    ]
+  },
+  "notes": "{\"summary\": \"...\"}",
+  "artifact_manifest": {
+    "audio": [
+      { "scene_id": "s1", "audio_url": "/media/s1.wav", "duration_seconds": 5 }
+    ],
+    "timings_by_stage": { "planning": 3.1, "narrating": 8.4 },
+    "video_url": "/media/lesson.mp4",
+    "notes_url": "/media/notes.json",
+    "subtitles_url": "/media/lesson.srt"
+  }
+}
+```
 
 ## 7. Environment variables
 
