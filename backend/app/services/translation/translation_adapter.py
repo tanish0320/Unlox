@@ -73,6 +73,40 @@ VERIFIED_SAMPLE_TRANSLATIONS: Dict[str, Dict[str, str]] = {
     },
 }
 
+# Audited native-script translations for Ratio & Proportion lesson
+VERIFIED_RATIO_TRANSLATIONS: Dict[str, Dict[str, str]] = {
+    "hi": {
+        "title": "अनुपात और समानुपात को समझना",
+        "scene_01_heading": "अनुपात और समानुपात का परिचय",
+        "scene_01_subtitle": "मात्राओं की तुलना करना",
+        "scene_01_narration": "अनुपात और समानुपात के इस पाठ में आपका स्वागत है। अनुपात दो मात्राओं की तुलना करता है, और समानुपात यह बताता है कि दो अनुपात बराबर हैं।",
+        "scene_02_heading": "चरण 1: अनुपात की गणना",
+        "scene_02_narration": "पायथन में, हम दोनों संख्याओं को उनके महत्तम समापवर्तक से विभाजित करके अनुपात को सरल बना सकते हैं।",
+        "scene_03_heading": "चरण 2: समानुपातिक स्केलिंग",
+        "scene_03_narration": "एक समानुपात का अर्थ है कि जब मात्राएँ आनुपातिक रूप से ऊपर या नीचे होती हैं तो संबंध स्थिर रहता है।",
+    },
+    "ta": {
+        "title": "விகிதம் மற்றும் விகிதாசாரத்தைப் புரிந்துகொள்வது",
+        "scene_01_heading": "விகிதம் மற்றும் விகிதாசாரத்தின் அறிமுகம்",
+        "scene_01_subtitle": "அளவுகளை ஒப்பிடுதல்",
+        "scene_01_narration": "விகிதம் மற்றும் விகிதாசாரம் பற்றிய இந்த பாடத்திற்கு வரவேற்கிறோம். விகிதம் இரண்டு அளவுகளை ஒப்பிடுகிறது, மேலும் விகிதாசாரம் இரண்டு விகிதங்கள் சமம் என்பதைக் குறிக்கிறது.",
+        "scene_02_heading": "படி 1: விகிதத்தைக் கணக்கிடுதல்",
+        "scene_02_narration": "பைத்தானில், இரண்டு எண்களையும் அவற்றின் பொது வகுத்தியால் வகுப்பதன் மூலம் விகிதத்தை எளிதாக்கலாம்.",
+        "scene_03_heading": "படி 2: விகிதாசார அளவிடுதல்",
+        "scene_03_narration": "அளவுகள் விகிதாசாரமாக அதிகரிக்கும் போது தொடர்பு மாறாமல் இருக்கும் என்பதை விகிதாசாரம் குறிக்கிறது.",
+    },
+    "te": {
+        "title": "నిష్పత్తి మరియు అనుపాతాన్ని అర్థం చేసుకోవడం",
+        "scene_01_heading": "నిష్పత్తి మరియు అనుపాతం పరిచయం",
+        "scene_01_subtitle": "పరిమాణాల పోలిక",
+        "scene_01_narration": "నిష్పత్తి మరియు అనుపాతం పాఠానికి స్వాగతం. నిష్పత్తి రెండు పరిమాణాలను పోల్చుతుంది మరియు అనుపాతం రెండు నిష్పత్తులు సమానమని చెబుతుంది.",
+        "scene_02_heading": "దశ 1: నిష్పత్తి లెక్కింపు",
+        "scene_02_narration": "పైథాన్‌లో, రెండు సంఖ్యలను వాటి గరిష్ట సామాన్య భాజకంతో భాగించడం ద్వారా నిష్పత్తిని సులభతరం చేయవచ్చు.",
+        "scene_03_heading": "దశ 2: అనుపాత స్కేలింగ్",
+        "scene_03_narration": "పరిమాణాలు అనుపాతంగా పెరిగినా లేదా తగ్గినా వాటి సంబంధం స్థిరంగా ఉంటుందని అనుపాతం సూచిస్తుంది.",
+    },
+}
+
 
 class DictionaryFallbackTranslationAdapter(BaseTranslationAdapter):
     """
@@ -93,8 +127,14 @@ class DictionaryFallbackTranslationAdapter(BaseTranslationAdapter):
             return lesson.model_copy(deep=True), False, None
 
         target = target_language.lower()
-        if target in VERIFIED_SAMPLE_TRANSLATIONS and "loop" in lesson.topic.lower():
+        mapping = None
+        topic_lower = lesson.topic.lower()
+        if target in VERIFIED_RATIO_TRANSLATIONS and ("ratio" in topic_lower or "proportion" in topic_lower):
+            mapping = VERIFIED_RATIO_TRANSLATIONS[target]
+        elif target in VERIFIED_SAMPLE_TRANSLATIONS and "loop" in topic_lower:
             mapping = VERIFIED_SAMPLE_TRANSLATIONS[target]
+
+        if mapping:
             translated = lesson.model_copy(deep=True)
             translated.language = target
             translated.title = mapping.get("title", translated.title)
@@ -113,8 +153,12 @@ class DictionaryFallbackTranslationAdapter(BaseTranslationAdapter):
 
                 # Strict code and identifier preservation
                 if isinstance(scene, CodeWalkthroughScene):
-                    # Ensure code block is strictly unmodified
-                    assert scene.code == lesson.scenes[1].code
+                    orig_scene = next((s for s in lesson.scenes if s.id == scene.id), None)
+                    if orig_scene and isinstance(orig_scene, CodeWalkthroughScene):
+                        scene.code = orig_scene.code
+                        scene.code_language = orig_scene.code_language
+                        scene.highlight_lines = orig_scene.highlight_lines
+                        scene.expected_output = orig_scene.expected_output
 
             return translated, False, None
 
@@ -193,3 +237,38 @@ class LocalTranslationDispatcher:
         return self.dict_adapter.translate_lesson(
             lesson, source_language, target_language
         )
+
+    def translate_scene(
+        self,
+        scene: any,
+        target_language: str,
+        source_language: str = "en",
+    ) -> any:
+        """Translates a single scene object while preserving code syntax."""
+        target = target_language.lower()
+        if target == source_language.lower():
+            return scene.model_copy(deep=True)
+
+        sc = scene.model_copy(deep=True)
+        # Check verified mappings
+        mapping = None
+        for dict_map in [VERIFIED_RATIO_TRANSLATIONS, VERIFIED_SAMPLE_TRANSLATIONS]:
+            if target in dict_map:
+                candidate = dict_map[target]
+                if f"{sc.id}_heading" in candidate:
+                    mapping = candidate
+                    break
+
+        if mapping:
+            if f"{sc.id}_heading" in mapping:
+                sc.heading = mapping[f"{sc.id}_heading"]
+            if f"{sc.id}_narration" in mapping:
+                sc.narration = mapping[f"{sc.id}_narration"]
+            if hasattr(sc, "subtitle") and f"{sc.id}_subtitle" in mapping:
+                sc.subtitle = mapping[f"{sc.id}_subtitle"]
+        else:
+            prefix = f"[{target.upper()}] "
+            sc.heading = f"{prefix}{sc.heading}"
+            sc.narration = f"{prefix}{sc.narration}"
+
+        return sc

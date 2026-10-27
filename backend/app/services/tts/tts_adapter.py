@@ -104,31 +104,42 @@ class WindowsLocalTTSAdapter(BaseTTSAdapter):
         if not self.is_language_supported(language):
             raise ValueError(f"Language '{language}' not supported by WindowsLocalTTSAdapter")
 
-        import pyttsx3
-        engine = pyttsx3.init()
+        import subprocess
+        import sys
 
         voice_id = self._available_voices.get(
             "en_female", self._available_voices.get("en_male", "default")
         )
-        if voice_id != "default":
-            engine.setProperty("voice", voice_id)
 
-        # Configure comfortable educational speaking rate
-        engine.setProperty("rate", 160)
-
-        # Synthesize to disk
-        engine.save_to_file(text, str(output_path))
-        engine.runAndWait()
-        engine.stop()
+        worker_script = (
+            "import pyttsx3, sys\n"
+            "text = sys.argv[1]\n"
+            "out = sys.argv[2]\n"
+            "voice = sys.argv[3]\n"
+            "e = pyttsx3.init()\n"
+            "if voice != 'default':\n"
+            "    e.setProperty('voice', voice)\n"
+            "e.setProperty('rate', 160)\n"
+            "e.save_to_file(text, out)\n"
+            "e.runAndWait()\n"
+        )
+        res = subprocess.run(
+            [sys.executable, "-c", worker_script, text, str(output_path), voice_id],
+            capture_output=True,
+            timeout=15.0,
+        )
+        if res.returncode != 0:
+            raise RuntimeError(f"TTS worker failed: {res.stderr.decode('utf-8', errors='ignore')}")
 
         duration = measure_wav_duration(output_path)
+        clean_vid = voice_id.replace("\\", "/").split("/")[-1]
 
         entry = SceneAudioEntry(
             scene_id=scene_id,
             audio_file=str(output_path.as_posix()),
             duration_seconds=duration,
             language=language,
-            voice_id=f"win_sapi5_{voice_id.split('\\')[-1]}",
+            voice_id=f"win_sapi5_{clean_vid}",
             sample_rate=22050,
             fallback_used=False,
             caption_segments=[
@@ -239,6 +250,30 @@ class LocalTTSDispatcher:
         return self.mock_adapter.synthesize_scene(
             scene_id=scene_id, text=text, language=language, output_path=out_file
         )
+
+    def synthesize_speech(
+        self, text: str, language: str, output_path: Path
+    ) -> SceneAudioEntry:
+        """Helper allowing direct text synthesis into a specific output path."""
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        scene_id = output_path.stem
+        # Try real offline voice if requested
+        if (
+            self.use_system_tts
+            and language.lower().startswith("en")
+            and self.windows_adapter.is_available()
+        ):
+            try:
+                entry, _ = self.windows_adapter.synthesize_scene(
+                    scene_id=scene_id, text=text, language=language, output_path=output_path
+                )
+                return entry
+            except Exception:
+                pass
+        entry, _ = self.mock_adapter.synthesize_scene(
+            scene_id=scene_id, text=text, language=language, output_path=output_path
+        )
+        return entry
 
     def synthesize_lesson(
         self, lesson: LessonPlan, lesson_id: str = "lesson_001"

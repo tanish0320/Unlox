@@ -1,4 +1,4 @@
-﻿# BLU VISUAL TEACHER — PERSON 4 MASTER INTEGRATION & HANDOFF MANUAL
+# BLU VISUAL TEACHER — PERSON 4 MASTER INTEGRATION & HANDOFF MANUAL
 *Updated for Person 3's Frontend Contract (`timeSeconds`, `durationSeconds`, `text`, `visible`, `notes`)*
 
 ---
@@ -256,75 +256,94 @@ npm run build
 
 ---
 
-## 13. Playwright Video Export Route (/render) Specification
+## 13. Blu Academy 2D RPG — Navigation, Collision & Room Transition Architecture
 
-Person 4 has implemented and verified the dedicated /render export viewport for Person 2's Playwright + FFmpeg export pipeline.
+### 13.1 Root Cause Analysis of Previous Navigation Bugs
+1. **Upper Doorways Blocked by Solid Corridor Wall**:
+   - The Grand Hallway (`corridor`) defined an unbroken wall `{ x: 0, y: 0, width: 26, height: 2 }` across columns 0–25.
+   - Door triggers were placed at `y = 1`. Because `CollisionSystem.isSolid()` evaluated wall collision before door triggers, the player's collision body hit the solid wall rectangle and could never step onto the door trigger tile.
+   - **Fix**: Cut explicit 2-tile doorway openings in the corridor top wall at `x: [3, 4]`, `[12, 13]`, `[21, 22]` and bottom wall at `x: [3, 4]`, `[12, 13]`, `[21, 22]`.
+2. **Player Stranded / Out-of-Bounds on Room Change**:
+   - `GameCanvas` maintained local `playerPos` in React state without resynchronizing when `currentRoom` changed. Entering a 14-tile-high classroom from `y = 16` in the corridor left the player at `y = 16`, which exceeded `room.gridHeight` and caused `isSolid()` to return `true` unconditionally, locking player movement.
+   - **Fix**: Synchronized `playerPos` and `posRef.current` in `useEffect([currentRoom.id, spawnPosition])` and updated `handleRoomChange` in `BluAcademyView` to pass explicit, safe destination spawn coordinates.
+3. **Classroom Exits Blocked & Transition Bounce Loops**:
+   - Maths, CS, and Physics had solid bottom walls across `y = 13`, and Chemistry, Biology, and Social had solid top walls at `y = 1`. Exit triggers were placed inside solid wall rectangles.
+   - Spawning immediately on or adjacent to a doorway trigger caused reverse transition bouncing without a cooldown buffer.
+   - **Fix**: Split classroom perimeter walls to create clear 2-tile doorway openings, placed exit triggers cleanly inside the threshold, established a 600ms transition cooldown (`transitionCooldownRef`), and positioned return spawns in the corridor comfortably outside the trigger zone (`y = 2.4` for north towers, `y = 14.8` for south wings).
+4. **Collision Box Snapping**:
+   - The collision system used discrete integer rounding `Math.round(x)`, causing jerky snapping near corners and desks.
+   - **Fix**: Implemented a continuous AABB feet collision box (`w: 0.6, h: 0.35, offsetX: 0.2, offsetY: 0.6`) so the player moves smoothly at 4.8 tiles/sec with sub-tile precision and slides naturally through aisles and doorways.
 
-### 13.1. Route URL Format & Query Parameters
-**Base URL:** `http://localhost:5173/render`
+### 13.2 Visual Collision Debug Mode
+- Accessible by appending `?debugCollisions=1` to the URL.
+- Live canvas overlay renders:
+  - **Red rectangles**: Wall collision boxes.
+  - **Orange rectangles**: Solid furniture colliders.
+  - **Yellow rectangles**: Door trigger zones with target room labels.
+  - **Cyan reticles**: Destination spawn positions.
+  - **Purple dashed circles**: Teacher interaction proximity zones (2.2 tiles).
+  - **Green / Red bounding box**: Player feet hitbox (green when walkable, red when colliding) with live coordinates.
 
-| Parameter | Aliases | Type | Default | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `lesson` | `lesson_id`, `lessonId` | string | `"default"` | Lesson plan to render. Built-in fixtures: `"default"`, `"p1"`, `"hi"`, `"kn"`. If a custom lesson ID is supplied, attempts to load from `http://localhost:8000/api/lessons/{id}`. |
-| `scene` | `scene_index`, `sceneIndex`, `scene_id`, `sceneId` | string / int | `0` | Scene index (`0`, `1`, `2`) or exact scene ID (`"scene_01"`, `"scene-1"`). |
-| `t` | `time`, `time_seconds`, `timeSeconds` | float | `0.0` | Scene-relative elapsed time in seconds (e.g. `2.5`). Clamped to `0.0`. |
-| `duration` | `duration_seconds`, `durationSeconds` | float | Manifest / 10.0 | Total scene duration in seconds. Uses explicit URL value, falls back to measured audio manifest duration (`p1AudioManifestDurations`), then lesson duration. |
-| `captions` | `show_captions` | boolean | `false` | Pass `"true"` or `"1"` to overlay captions. Defaults to `"false"` to provide clean canvas for FFmpeg SRT subtitle burning. |
+### 13.3 Automated Regression Test Suite
+- Comprehensive automated regression tests added to `frontend/src/tests/BluAcademy.test.tsx` verifying:
+  - Hallway has 6 distinct doors connecting to Maths, CS, Physics, Chemistry, Biology, and Social Sciences.
+  - Every classroom has a return door to the corridor.
+  - All destination spawn positions are 100% walkable (`!CollisionSystem.isSolid()`).
+  - Cooldown prevents bounce loops upon spawning.
+  - Doorway openings in corridor and classroom walls are physically passable.
+  - All 6 teachers are approachable and their interaction zones are reachable.
+  - Central walking aisles are open and unobstructed.
+- **Vitest Suite**: 8/8 test files passed, 59/59 tests passed.
 
-### 13.2. Example Export URLs
-- **Title Card (Scene 0 at 1.5s):**  
-  `http://localhost:5173/render?lesson=default&scene=0&t=1.5`
-- **Code Walkthrough (Person 1 Scene 2 at 4.0s with real duration):**  
-  `http://localhost:5173/render?lesson=p1&scene=scene_02&t=4.0&duration=7.833`
-- **Diagram (Person 1 Scene 3 items[] at 2.0s):**  
-  `http://localhost:5173/render?lesson=p1&scene=scene_03&t=2.0&duration=6.998`
-- **Multilingual Script (Hindi Devanagari Title Card at 1.0s):**  
-  `http://localhost:5173/render?lesson=hi&scene=0&t=1.0`
+---
 
-### 13.3. DOM Readiness Contract for Playwright
-The capture page provides a strict DOM signaling contract:
+## 14. Blu Academy — NPC Population, Character Scaling & Signboard Polish
 
-``html
-<div
-  id="render-root"
-  data-testid="render-root"
-  data-render-ready="true"
-  data-render-error="false"
-  data-lesson-title="How a Python loop works"
-  data-scene-index="1"
-  data-scene-id="scene_02"
-  data-scene-type="code_walkthrough"
-  data-time-seconds="4.0"
-  data-duration-seconds="7.833"
-  style="width: 1280px; height: 720px; overflow: hidden; position: relative; background-color: #0B1020;"
->
-  <!-- Active SceneRenderer Component -->
-</div>
-``
+### 14.1 Populated NPCs
+- **Grand Hallway (8 NPCs)**:
+  - **Leo** (Student, reading near bulletin board)
+  - **Priya** (Student, wandering between Maths and CS)
+  - **Arjun** (Student, wandering with headphones near Physics)
+  - **Caretaker Sam** (Academy Staff, patrolling central lobby)
+  - **Maya** (Student, seated at study bench)
+  - **Rohan** (Student, seated at study bench)
+  - **Dr. Thorne** (Visiting Scholar, examining trophy case)
+  - **Zoe** (Student, walking near south wings)
+- **Classrooms (18 NPCs — 3 students per room)**:
+  - **Maths Tower**: Dev, Tara, Kiran (seated at desks studying geometry and prime numbers)
+  - **CS Lab**: Aiden, Lin, Vikram (typing at workstations with glowing monitors)
+  - **Physics Observatory**: Nia, Omar, Sara (at optics bench, refractor telescope, and circuit tester)
+  - **Chemistry Lab**: Anya, Kabir, Elena (at distillation bench, titration bench, and centrifuge)
+  - **Biology Greenhouse**: Kai, Meera, Lucas (at fern sanctuary, microscope, and seedling nursery)
+  - **Social Sciences Museum**: Zara, Anand, Chloe (at terra globe, maritime display, and treaties archive)
+- **Behavior & Ambient Dialogue**:
+  - Managed by `NPCManager.ts`. Seated students remain at their desks, wandering hallway NPCs patrol safe bounded zones without blocking doors or trapping the player.
+  - Approaching within 1.8 tiles or clicking an NPC displays an animated pixel-art speech balloon above their head for 4.5 seconds with educational dialogue.
+  - Ambient NPCs never launch fake lesson generation; existing teachers remain solely responsible for starting lessons.
 
-- **Readiness State:** `data-render-ready="true"` appears **only** after lesson data is verified, active scene is mounted, and `document.fonts.ready` has resolved all local glyphs.
-- **Unready State:** While initializing or resolving resources, `data-render-ready="false"`.
-- **Error State:** If an invalid scene index or missing lesson is requested, `data-render-ready="false"` and `data-render-error="true"`, with human-readable error diagnostics rendered inside `#render-error`.
-- **Playwright Capture Snippet:**
-  ``javascript
-  await page.goto('http://localhost:5173/render?lesson=p1&scene=scene_02&t=2.0&duration=7.833');
-  const target = await page.waitForSelector('#render-root[data-render-ready="true"]');
-  await target.screenshot({ path: 'frame_00060.png' });
-  ``
+### 14.2 Character Scaling & Visual Proportions
+- **Character Sprites**: Enlarged from ~28px to 42px visual height (~1.5× scale factor), with distinct silhouettes, detailed hair highlights, directional pupils with specular glints, uniforms, and accessories (spectacles, backpacks, headphones, caps, safety goggles, scarves).
+- **Collision Safety**: Visual sprites are anchored at the feet. Feet collision hitbox (`0.6 × 0.35` tiles) remains untouched, guaranteeing zero navigation or entrance/exit collision regressions.
 
-### 13.4. High-Performance Programmatic Seeking API
-To capture 30 FPS sequences without reloading the browser page on every frame, Person 4 exposes a global seeking helper on `window`:
-``javascript
-// Seek frame instantly in Playwright without reloading the page:
-await page.evaluate(({ t, dur }) => {
-  window.__BLU_SEEK_FRAME__(t, dur);
-}, { t: frame / 30.0, dur: 7.833 });
+### 14.3 Classroom Immersion & Camera Zoom
+- **Camera Zoom Factor**:
+  - Grand Hallway: $1.3\times$ zoom ($1082 \times 749\text{px}$ world view), smoothly tracking vertical exploration between north and south wings.
+  - Classrooms: $1.45\times$ zoom ($928 \times 650\text{px}$ world view), comfortably filling the $1280 \times 720$ canvas with balanced framing and zero empty void.
+- **Unified Click Transform**: Click-to-move and character click interactions map through `getCameraTransform()`, maintaining 100% click-to-tile coordinate accuracy.
 
-await page.waitForSelector('#render-root[data-render-ready="true"]');
-await page.locator('#render-root').screenshot({ path: rame_.png });
-``
+### 14.4 Redesigned Classroom Signboards
+- **Zero Edge Clipping**:
+  - Top row doors (Maths, CS, Physics): Signboards positioned at $Y = 4\text{px}$ inside the top wall header ($0 \le Y \le 36\text{px}$), completely eliminating the previous top-edge clipping.
+  - Bottom row doors (Chemistry, Biology, Social): Signboards positioned at $Y = 464\text{px}$ above the south archway, completely eliminating the previous bottom-edge clipping.
+- **Two-Line Hierarchy**:
+  - Main Title: Bold cream uppercase (e.g. `PHYSICS OBSERVATORY`, `MATHS TOWER`, `CS LAB`).
+  - Subtitle: Pastel blue faculty designation (e.g. `Dr. Newton`, `Ms. Asha`, `Prof. Byte`).
+- **Interactive Proximity Feedback**:
+  - Signboard frame glows with animated gold breathing pulse when player is within 2.5 tiles.
+  - Floating contextual prompt appears: `[W] or [↑] Enter {subject}` (North doors) or `[S] or [↓] Enter {subject}` (South doors).
 
-### 13.5. Verification & Test Metrics
-- **Tests Passed:** 8 test files, 47 unit tests passed (including 8 comprehensive tests for `RenderPage` testing dimensions, parameter handling, error states, and caption visibility).
-- **Build Verified:** `npm run build` succeeds cleanly (`dist/` generated with zero TypeScript or bundle warnings).
-- **Local Dev Server Verified:** `http://localhost:5173/render` serves HTTP 200 OK offline.
+### 14.5 Automated Test Results
+- **Vitest Suite**: 8/8 test files passed, 64/64 tests passed.
+- **Build**: `tsc && vite build` clean in 1.44s.
+
+

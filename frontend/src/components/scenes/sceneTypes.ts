@@ -69,9 +69,15 @@ export interface LessonPlan {
   title: string;
   level: LessonLevel;
   language: string;
+  source_language?: string;
   topic?: string;
   target_duration_seconds?: number;
   scenes: LessonScene[];
+  summary?: string;
+  learning_objectives?: string[];
+  key_takeaways?: string[];
+  glossary?: KeyConcept[];
+  revision_questions?: RevisionQuestion[];
 }
 
 /**
@@ -205,6 +211,11 @@ export interface AudioManifestEntry {
   voice_id: string;
   sample_rate?: number;
   fallback_used?: boolean;
+  start_seconds?: number;
+  end_seconds?: number;
+  global_start_seconds?: number;
+  global_end_seconds?: number;
+  caption_segments?: CaptionSegment[];
 }
 
 export interface AudioManifest {
