@@ -23,7 +23,10 @@ scratch/
 outputs/audio/
 outputs/test_run/
 outputs/generated/
+outputs/stage2_tests/
 outputs/verification_screenshot.png
+*.db
+Screenshot *.png
 
 # Frontend
 frontend/node_modules/

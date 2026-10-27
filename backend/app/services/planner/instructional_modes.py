@@ -24,9 +24,9 @@ PROGRAMMING_KEYWORDS = [
 
 MATH_KEYWORDS = [
     r"\bratios?\b", r"\bproportions?\b", r"\bfractions?\b", r"\bpercentages?\b", r"\bpercents?\b",
-    r"\bnumber lines?\b", r"\bintegers?\b", r"\bpythagor\b", r"\balgebra\b", r"\bgeometry\b",
-    r"\bequations?\b", r"\bmultiplications?\b", r"\bdivisions?\b", r"\badditions?\b",
-    r"\bsubtractions?\b", r"\btrigonometry\b", r"\bcalculus\b", r"\bprime numbers?\b",
+    r"\bnumber lines?\b", r"\bintegers?\b", r"\bpythagor\w*\b", r"\btriangles?\b", r"\bhypotenuse\b",
+    r"\balgebra\b", r"\bgeometry\b", r"\bequations?\b", r"\bmultiplications?\b", r"\bdivisions?\b",
+    r"\badditions?\b", r"\bsubtractions?\b", r"\btrigonometry\b", r"\bcalculus\b", r"\bprime numbers?\b",
     r"\bgcd\b", r"\bhcf\b", r"\blcm\b", r"\bdecimals?\b", r"\bmaths?\b",
     r"\bmathematics\b", r"अनुपात", r"समानुपात", r"भिन्न", r"गणित"
 ]
@@ -35,14 +35,16 @@ SCIENCE_KEYWORDS = [
     r"\bphotosynthesis\b", r"\bplant\b", r"\bcell\b", r"\batom\b", r"\bmolecule\b",
     r"\bgravity\b", r"\bphysics\b", r"\bchemistry\b", r"\bbiology\b", r"\benergy\b",
     r"\blight\b", r"\bwater cycle\b", r"\bdna\b", r"\belectron\b", r"\bplanet\b",
-    r"\bsolar system\b", r"\bevolution\b", r"\bforce\b", r"\bmotion\b", r"\bnewton\b",
-    r"\b प्रकाश संश्लेषण\b", r"कोशिका", r"गुरुत्वाकर्षण", r"विज्ञान"
+    r"\bsolar system\b", r"\bevolution\b", r"\bforces?\b", r"\bmotion\b", r"\bnewton\w*\b",
+    r"\bcircuits?\b", r"\bmechanics\b", r"\bdynamics\b", r"\b प्रकाश संश्लेषण\b", r"कोशिका", r"गुरुत्वाकर्षण", r"विज्ञान"
 ]
 
 SOCIAL_STUDIES_KEYWORDS = [
     r"\bhistory\b", r"\bgeography\b", r"\btrade route\b", r"\bdemocracy\b",
     r"\bmap\b", r"\bcompass\b", r"\bsettlement\b", r"\bgovernment\b",
-    r"\bconstitution\b", r"\bcivilization\b", r"\brevolution\b", r"\belection\b"
+    r"\bconstitution\b", r"\bcivilizations?\b", r"\brevolution\b", r"\belection\b",
+    r"\briver valley\b", r"\bindus\b", r"\bharappa\b", r"\bmohenjo\b", r"\bmesopotamia\b",
+    r"\bnile\b", r"\btigris\b", r"\beuphrates\b", r"\bancient\b", r"\barchaeology\b"
 ]
 
 

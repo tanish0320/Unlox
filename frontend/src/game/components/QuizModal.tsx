@@ -6,15 +6,69 @@ export interface QuizQuestion {
   options: string[];
   correctIndex: number;
   explanation: string;
+  hint?: string;
+  concept_reference?: string;
 }
 
 interface QuizModalProps {
   topic: string;
   subject: SubjectId;
   questions?: { question: string; answer: string }[];
+  quizQuestions?: QuizQuestion[];
   onComplete: (xpGained: number) => void;
   onSkip: () => void;
 }
+
+const SUBJECT_DISTRACTOR_POOLS: Record<SubjectId, string[]> = {
+  cs: [
+    "print statement",
+    "variable declaration",
+    "static import",
+    "conditional branch",
+    "array indexing",
+    "string concatenation",
+  ],
+  maths: [
+    "Perpendicular bisector",
+    "Reciprocal fraction",
+    "Greatest common divisor",
+    "Arithmetic mean",
+    "Coordinate quadrant",
+    "Absolute magnitude",
+  ],
+  physics: [
+    "Thermal convection",
+    "Kinetic equilibrium",
+    "Gravitational potential",
+    "Centripetal acceleration",
+    "Magnetic flux",
+    "Ohmic resistance",
+  ],
+  chemistry: [
+    "Ionic bonding",
+    "Covalent sharing",
+    "Acid-base titration",
+    "Exothermic enthalpy",
+    "Precipitate formation",
+    "Catalytic reduction",
+  ],
+  biology: [
+    "Mitochondrial respiration",
+    "Cellular meiosis",
+    "Enzymatic hydrolysis",
+    "Ribosomal synthesis",
+    "Active osmosis",
+    "Chloroplast thylakoids",
+  ],
+  social: [
+    "The Roman Republic",
+    "The Feudal Guild System",
+    "The Age of Exploration",
+    "The Industrial Revolution",
+    "Classical Athens",
+    "The Han Dynasty",
+  ],
+};
 
 const FALLBACK_QUIZZES: Record<SubjectId, QuizQuestion[]> = {
   cs: [
@@ -23,9 +77,10 @@ const FALLBACK_QUIZZES: Record<SubjectId, QuizQuestion[]> = {
       options: ["1", "0", "3", "-1"],
       correctIndex: 1,
       explanation: "Python's range(3) starts at index 0 and generates 0, 1, and 2.",
+      hint: "Remember that Python uses zero-based indexing for range sequences.",
     },
     {
-      question: "Why do programmers use loops?",
+      question: "Why do programmers use loops in algorithms?",
       options: [
         "To repeat instructions automatically",
         "To make the computer run slower",
@@ -34,6 +89,7 @@ const FALLBACK_QUIZZES: Record<SubjectId, QuizQuestion[]> = {
       ],
       correctIndex: 0,
       explanation: "Loops prevent manual repetition and automate iterative execution.",
+      hint: "Think about avoiding repetitive copy-pasting of code.",
     },
   ],
   maths: [
@@ -42,6 +98,14 @@ const FALLBACK_QUIZZES: Record<SubjectId, QuizQuestion[]> = {
       options: ["The right angle", "The shortest leg", "The hypotenuse", "The perimeter"],
       correctIndex: 2,
       explanation: "c is the hypotenuse, the longest side opposite the right angle.",
+      hint: "It is the side directly opposite the 90-degree right angle.",
+    },
+    {
+      question: "If a right triangle has legs of lengths 3 and 4, what is the length of its hypotenuse?",
+      options: ["5", "7", "12", "25"],
+      correctIndex: 0,
+      explanation: "3² + 4² = 9 + 16 = 25. The square root of 25 is 5, forming a primitive Pythagorean triple.",
+      hint: "Calculate 3 squared plus 4 squared, then find the square root.",
     },
   ],
   physics: [
@@ -55,6 +119,19 @@ const FALLBACK_QUIZZES: Record<SubjectId, QuizQuestion[]> = {
       ],
       correctIndex: 0,
       explanation: "Net force acting on an object is equal to its mass times its acceleration.",
+      hint: "Think about how force depends on how heavy an object is and how quickly it speeds up.",
+    },
+    {
+      question: "What does Newton's First Law (Law of Inertia) state about an object moving at constant speed?",
+      options: [
+        "It stays in motion unless acted upon by a net external force",
+        "It stops automatically after traveling three meters",
+        "It accelerates without any force applied",
+        "It immediately reverses direction",
+      ],
+      correctIndex: 0,
+      explanation: "Objects continue in their state of rest or uniform motion unless an unbalanced external force acts on them.",
+      hint: "Inertia means resistance to changes in motion.",
     },
   ],
   chemistry: [
@@ -68,6 +145,7 @@ const FALLBACK_QUIZZES: Record<SubjectId, QuizQuestion[]> = {
       ],
       correctIndex: 0,
       explanation: "Atoms consist of a nucleus (protons and neutrons) orbited by electrons.",
+      hint: "Consider the subatomic particles located in the nucleus and outer shells.",
     },
   ],
   biology: [
@@ -75,15 +153,34 @@ const FALLBACK_QUIZZES: Record<SubjectId, QuizQuestion[]> = {
       question: "What essential gas do plants produce as a byproduct of photosynthesis?",
       options: ["Carbon dioxide", "Oxygen", "Nitrogen", "Methane"],
       correctIndex: 1,
-      explanation: "Plants absorb carbon dioxide and release oxygen during photosynthesis.",
+      explanation: "Plants absorb carbon dioxide and water, releasing oxygen through photolysis in the chloroplast.",
+      hint: "It is the gas that humans and animals require for aerobic respiration.",
     },
   ],
   social: [
     {
-      question: "What ancient network of trade routes connected the East and West?",
-      options: ["The Silk Road", "The Atlantic Highway", "The Spice Flight", "The Polar Passage"],
+      question: "Which ancient river valley civilization built grid-planned cities with baked bricks and underground drainage?",
+      options: [
+        "Indus Valley Civilization",
+        "The Roman Empire",
+        "Medieval England",
+        "The Aztec Empire",
+      ],
       correctIndex: 0,
-      explanation: "The historic Silk Road facilitated trade between Asia, Europe, and Africa.",
+      explanation: "Harappa and Mohenjo-daro in the Indus Valley were famous for precise orthogonal grid planning and covered drainage systems.",
+      hint: "This civilization flourished along the Indus and Saraswati rivers in South Asia.",
+    },
+    {
+      question: "Why did the earliest major human civilizations develop along fertile river valleys?",
+      options: [
+        "Rich alluvial silt and freshwater supported agriculture",
+        "Deep underground gold reserves",
+        "Constant arctic snow cover",
+        "Protection from all oceanic rainfall",
+      ],
+      correctIndex: 0,
+      explanation: "River floods deposited mineral-rich silt, creating agricultural surpluses that allowed cities to grow.",
+      hint: "Think about what is needed to grow food and supply drinking water for an entire population.",
     },
   ],
 };
@@ -92,6 +189,7 @@ export const QuizModal: React.FC<QuizModalProps> = ({
   topic,
   subject,
   questions,
+  quizQuestions,
   onComplete,
   onSkip,
 }) => {
@@ -102,26 +200,29 @@ export const QuizModal: React.FC<QuizModalProps> = ({
 
   // Generate and memoize quiz list
   const activeQuizList: QuizQuestion[] = useMemo(() => {
+    if (quizQuestions && quizQuestions.length > 0) {
+      return quizQuestions.slice(0, 3);
+    }
     if (questions && questions.length > 0) {
-      return questions.slice(0, 2).map((q) => {
-        const rawOptions = [
-          q.answer,
-          "An alternative unrelated outcome",
-          "A common misconception",
-          "None of the above",
-        ];
+      const pool = SUBJECT_DISTRACTOR_POOLS[subject] || SUBJECT_DISTRACTOR_POOLS.cs;
+      return questions.slice(0, 3).map((q) => {
+        const distractors = pool.filter((d) => d.toLowerCase() !== q.answer.toLowerCase()).slice(0, 3);
+        while (distractors.length < 3) {
+          distractors.push(`Secondary ${subject} factor`);
+        }
+        const rawOptions = [q.answer, ...distractors];
         const shuffled = [...rawOptions].sort(() => 0.5 - Math.random());
         const correctIndex = shuffled.indexOf(q.answer);
         return {
           question: q.question,
           options: shuffled,
           correctIndex: correctIndex >= 0 ? correctIndex : 0,
-          explanation: `Correct: ${q.answer}`,
+          explanation: `Verified answer: ${q.answer}`,
         };
       });
     }
     return FALLBACK_QUIZZES[subject] || FALLBACK_QUIZZES.cs;
-  }, [questions, subject]);
+  }, [quizQuestions, questions, subject]);
 
   const currentQ = activeQuizList[currentIdx];
 
@@ -208,9 +309,25 @@ export const QuizModal: React.FC<QuizModalProps> = ({
             QUESTION {currentIdx + 1} OF {activeQuizList.length} (+25 XP)
           </div>
 
-          <p style={{ fontSize: 16, fontWeight: 600, color: "#1E293B", lineHeight: 1.5, margin: "0 0 20px 0" }}>
+          <p style={{ fontSize: 16, fontWeight: 600, color: "#1E293B", lineHeight: 1.5, margin: "0 0 16px 0" }}>
             {currentQ.question}
           </p>
+
+          {currentQ.hint && !isAnswered && (
+            <div
+              style={{
+                fontSize: 12,
+                color: "#047857",
+                backgroundColor: "#ECFDF5",
+                padding: "6px 12px",
+                borderRadius: 6,
+                marginBottom: 16,
+                border: "1px solid #A7F3D0",
+              }}
+            >
+              💡 <strong>Hint:</strong> {currentQ.hint}
+            </div>
+          )}
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
             {currentQ.options.map((opt, i) => {

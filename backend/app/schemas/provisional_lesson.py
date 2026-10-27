@@ -126,6 +126,22 @@ SceneVariant = Annotated[
 ]
 
 
+class EvidenceSource(BaseModel):
+    source_name: str = Field(..., description="Document filename or identifier")
+    page_number: Optional[int] = Field(None, description="Page number of evidence passage")
+    excerpt: str = Field(..., description="Exact textual evidence supporting the lesson")
+    verified: bool = Field(default=True, description="True if derived from local indexed source")
+
+
+class QuizQuestion(BaseModel):
+    question: str = Field(..., min_length=5, description="Specific factual or conceptual question")
+    options: List[str] = Field(..., min_length=4, max_length=4, description="Four distinct plausible answer options")
+    correct_index: int = Field(..., ge=0, le=3, description="0-indexed key of the verified correct answer")
+    explanation: str = Field(..., min_length=5, description="Clear pedagogical explanation of why this answer is correct")
+    hint: Optional[str] = Field(None, description="Helpful pedagogical clue without giving away the answer")
+    concept_reference: Optional[str] = Field(None, description="Specific concept or formula referenced")
+
+
 class LessonPlan(BaseModel):
     schema_version: str = Field(default="1.0.0", description="SemVer schema specification")
     title: str = Field(..., min_length=3, max_length=150, description="Main lesson title")
@@ -159,6 +175,12 @@ class LessonPlan(BaseModel):
     )
     revision_questions: Optional[List[dict]] = Field(
         default=None, description="Review questions and answers [{'question': ..., 'answer': ...}]"
+    )
+    evidence_sources: List[EvidenceSource] = Field(
+        default_factory=list, description="Verified local source documents grounding this lesson"
+    )
+    quiz_questions: List[QuizQuestion] = Field(
+        default_factory=list, description="Structured 4-option quiz questions grounded in lesson facts"
     )
 
     @field_validator("scenes")

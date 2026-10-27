@@ -198,6 +198,7 @@ class WindowsLocalTTSAdapter(BaseTTSAdapter):
         text: str,
         language: str,
         output_path: Path,
+        voice_id: Optional[str] = None,
     ) -> Tuple[SceneAudioEntry, bool]:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         lang = language.lower().replace("-", "_").split("_")[0]
@@ -205,12 +206,17 @@ class WindowsLocalTTSAdapter(BaseTTSAdapter):
         if not self.is_language_supported(language):
             raise MissingLocalVoiceError(f"Language '{language}' not supported by WindowsLocalTTSAdapter")
 
-        voice_id = self._available_voices.get(
-            lang,
-            self._available_voices.get(
-                "en_female", self._available_voices.get("en_male", "default")
-            ),
-        )
+        if voice_id and "david" in voice_id.lower():
+            target_voice = self._available_voices.get("en_male", "default")
+        elif voice_id and "zira" in voice_id.lower():
+            target_voice = self._available_voices.get("en_female", "default")
+        else:
+            target_voice = self._available_voices.get(
+                lang,
+                self._available_voices.get(
+                    "en_female", self._available_voices.get("en_male", "default")
+                ),
+            )
 
         worker_script = (
             "import pyttsx3, sys\n"
@@ -220,12 +226,12 @@ class WindowsLocalTTSAdapter(BaseTTSAdapter):
             "e = pyttsx3.init()\n"
             "if voice != 'default':\n"
             "    e.setProperty('voice', voice)\n"
-            "e.setProperty('rate', 160)\n"
+            "e.setProperty('rate', 150)\n"
             "e.save_to_file(text, out)\n"
             "e.runAndWait()\n"
         )
         res = subprocess.run(
-            [sys.executable, "-c", worker_script, text, str(output_path), voice_id],
+            [sys.executable, "-c", worker_script, text, str(output_path), target_voice],
             capture_output=True,
             timeout=15.0,
         )
@@ -505,12 +511,12 @@ class LocalTTSDispatcher:
         out_file = self.output_dir / f"{scene_id}_{language}.wav"
         lang = language.lower().replace("-", "_").split("_")[0]
 
-        # 0. Dispatch to Kokoro Neural Engine for English when requested or available
-        if (voice_id and voice_id.startswith("kokoro")) or (
+        # 0. Dispatch to Kokoro Neural Engine for English when requested or available (unless SAPI5 requested)
+        is_sapi5_requested = bool(voice_id and any(s in voice_id.lower() for s in ["sapi5", "david", "zira"]))
+        if not is_sapi5_requested and ((voice_id and voice_id.startswith("kokoro")) or (
             lang in ("en", "eng")
             and self.kokoro_adapter.is_available()
-            and not (voice_id and "sapi5" in voice_id.lower())
-        ):
+        )):
             try:
                 return self.kokoro_adapter.synthesize_scene(
                     scene_id=scene_id, text=text, language=language, output_path=out_file, voice_id=voice_id
@@ -528,7 +534,7 @@ class LocalTTSDispatcher:
         if self.use_system_tts and self.windows_adapter.is_language_supported(lang):
             try:
                 return self.windows_adapter.synthesize_scene(
-                    scene_id=scene_id, text=text, language=language, output_path=out_file
+                    scene_id=scene_id, text=text, language=language, output_path=out_file, voice_id=voice_id
                 )
             except Exception:
                 pass

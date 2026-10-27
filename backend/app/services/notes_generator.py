@@ -77,17 +77,35 @@ def generate_study_notes(
         ),
     ]
 
-    # 3. Revision questions
-    revision_questions = [
-        RevisionQuestion(
-            question=f"What is the main takeaway regarding {lesson.topic}?",
-            answer=lesson.scenes[0].narration,
-        ),
-        RevisionQuestion(
-            question=f"How many distinct steps were covered in this lesson?",
-            answer=f"{len(lesson.scenes)} steps were demonstrated in sequence.",
-        ),
-    ]
+    # 3. Revision questions (Grounded in lesson content, never unverified paragraph dumps)
+    if getattr(lesson, "quiz_questions", None) and len(lesson.quiz_questions) > 0:
+        revision_questions = [
+            RevisionQuestion(
+                question=q.question,
+                answer=q.options[q.correct_index],
+            )
+            for q in lesson.quiz_questions[:3]
+        ]
+    elif getattr(lesson, "revision_questions", None) and len(lesson.revision_questions) > 0:
+        revision_questions = [
+            RevisionQuestion(
+                question=rq.get("question", f"Key question about {lesson.topic}"),
+                answer=rq.get("answer", f"Core principle demonstrated in {lesson.title}"),
+            )
+            for rq in lesson.revision_questions[:3]
+        ]
+    else:
+        second_heading = lesson.scenes[1].heading if len(lesson.scenes) > 1 else "Core Principle"
+        revision_questions = [
+            RevisionQuestion(
+                question=f"What core concept is explored in {lesson.topic}?",
+                answer=f"{lesson.topic} is analyzed through {second_heading.lower()} and step-by-step demonstrations.",
+            ),
+            RevisionQuestion(
+                question="How are the principles structured across the lesson?",
+                answer=f"Through {len(lesson.scenes)} sequential visual and explanatory scenes.",
+            ),
+        ]
 
     summary = (
         f"This {lesson.level} lesson on '{lesson.topic}' provides a {manifest.total_duration_seconds}s "

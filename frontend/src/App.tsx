@@ -686,6 +686,16 @@ export const App: React.FC = () => {
 
   const currentSceneDuration = currentAudioEntry?.duration_seconds || 10;
 
+  const totalLessonDuration = audioManifest?.total_timeline_duration_seconds
+    || audioManifest?.total_duration_seconds
+    || (lessonPlan?.scenes?.length ? lessonPlan.scenes.length * 10 : 0);
+
+  const priorDuration = (audioManifest?.entries || [])
+    .slice(0, currentSceneIdx)
+    .reduce((acc, e) => acc + (e.duration_seconds || 0) + 0.3, 0);
+
+  const globalLessonTime = Math.min(totalLessonDuration, priorDuration + sceneTime);
+
 
 
   // Sync sceneTime from audio playback
@@ -2239,7 +2249,7 @@ export const App: React.FC = () => {
 
                           <span style={{ fontSize: 13, color: "var(--bvt-text-muted)" }}>
 
-                            {formatTime(sceneTime)} / {formatTime(currentSceneDuration)}
+                            {formatTime(globalLessonTime)} / {formatTime(totalLessonDuration)} (Scene {currentSceneIdx + 1}/{lessonPlan?.scenes?.length || 1})
 
                           </span>
 
