@@ -61,7 +61,7 @@ export const LessonComposition: React.FC<LessonCompositionProps> = ({
         width: 1280,
         height: 720,
         position: "relative",
-        backgroundColor: "#0B0F17",
+        backgroundColor: "#FBF9F4",
         overflow: "hidden",
         fontFamily: "'Inter', sans-serif",
       }}
@@ -101,17 +101,17 @@ export const LessonComposition: React.FC<LessonCompositionProps> = ({
         >
           <div
             style={{
-              backgroundColor: "rgba(11, 15, 23, 0.88)",
-              border: "1px solid rgba(56, 189, 248, 0.35)",
-              color: "#F8FAFC",
+              backgroundColor: "rgba(255, 255, 255, 0.95)",
+              border: "1.5px solid rgba(232, 226, 213, 0.9)",
+              color: "#1C2B38",
               fontSize: 20,
-              fontWeight: 500,
+              fontWeight: 600,
               padding: "10px 24px",
               borderRadius: 9999,
               backdropFilter: "blur(12px)",
               textAlign: "center",
               maxWidth: 960,
-              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.45)",
+              boxShadow: "0 8px 32px rgba(28, 43, 56, 0.12)",
               lineHeight: 1.4,
             }}
           >

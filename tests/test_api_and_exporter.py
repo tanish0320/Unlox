@@ -187,10 +187,10 @@ def test_generate_lesson_hindi_translation():
     assert lesson.source_language == "en"
     # Verify scene 1 contains Hindi text
     assert "अनुपात" in lesson.scenes[0].heading or "[HI]" in lesson.scenes[0].heading
-    # Verify code scene still has valid code
-    code_scene = lesson.scenes[1]
-    assert hasattr(code_scene, "code")
-    assert "gcd" in code_scene.code or "python" in code_scene.code_language.lower()
+    # Verify math scene is a visual diagram without inappropriate Python code
+    math_scene = lesson.scenes[1]
+    assert math_scene.type == "diagram"
+    assert math_scene.diagram_type in ["fraction_bar", "proportion_table"] or getattr(math_scene, "fraction_bar", None) is not None
 
 
 def test_api_generate_lesson_endpoint():

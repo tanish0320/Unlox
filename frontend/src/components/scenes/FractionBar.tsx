@@ -8,32 +8,19 @@ interface FractionBarProps {
   heading?: string;
 }
 
-export const FractionBar: React.FC<FractionBarProps> = ({ spec, progress, heading }) => {
+export const FractionBar: React.FC<FractionBarProps> = ({ spec, progress }) => {
   const eased = easeOutCubic(Math.min(1, progress * 1.3));
   const totalUnits = spec.total_units || 10;
   const barWidth = 960;
   const barHeight = 64;
 
-  const defaultColors = ["#38BDF8", "#34D399", "#F59E0B", "#EC4899", "#818CF8"];
+  const defaultColors = ["#234E3C", "#C87A64", "#D97706", "#2563EB", "#7C3AED"];
 
   let cumulativeUnits = 0;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", padding: "10px 0" }}>
-      {heading && (
-        <div style={{ fontSize: 18, fontWeight: 700, color: "#F8FAFC", marginBottom: 16 }}>
-          {heading}
-        </div>
-      )}
-
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", padding: "6px 0" }}>
       <svg width={barWidth} height={180} viewBox={`0 0 ${barWidth} 180`} fill="none">
-        <defs>
-          <filter id="barGlow" x="-5%" y="-10%" width="110%" height="130%">
-            <feGaussianBlur stdDeviation="6" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-          </filter>
-        </defs>
-
         {/* Outer Background Track */}
         <rect
           x={0}
@@ -41,8 +28,8 @@ export const FractionBar: React.FC<FractionBarProps> = ({ spec, progress, headin
           width={barWidth}
           height={barHeight}
           rx={12}
-          fill="#111A2E"
-          stroke="rgba(56, 189, 248, 0.3)"
+          fill="#FFFFFF"
+          stroke="#E8E2D5"
           strokeWidth={2}
         />
 
@@ -71,8 +58,7 @@ export const FractionBar: React.FC<FractionBarProps> = ({ spec, progress, headin
                 height={barHeight - 4}
                 rx={10}
                 fill={color}
-                opacity={0.88}
-                filter="url(#barGlow)"
+                opacity={0.9}
               />
 
               {/* Segment Label Inside */}
@@ -80,7 +66,7 @@ export const FractionBar: React.FC<FractionBarProps> = ({ spec, progress, headin
                 <text
                   x={textX}
                   y={78}
-                  fill="#0B1020"
+                  fill="#FFFFFF"
                   fontSize={15}
                   fontWeight={800}
                   textAnchor="middle"
@@ -117,7 +103,7 @@ export const FractionBar: React.FC<FractionBarProps> = ({ spec, progress, headin
               y1={40}
               x2={tickX}
               y2={40 + barHeight}
-              stroke="rgba(255, 255, 255, 0.2)"
+              stroke="#E8E2D5"
               strokeWidth={1.5}
               strokeDasharray="3 3"
             />
@@ -133,14 +119,14 @@ export const FractionBar: React.FC<FractionBarProps> = ({ spec, progress, headin
               width={480}
               height={36}
               rx={18}
-              fill="#17243B"
-              stroke="#38BDF8"
+              fill="#FFFFFF"
+              stroke="#234E3C"
               strokeWidth={1.5}
             />
             <text
               x={0}
               y={5}
-              fill="#F8FAFC"
+              fill="#1C2B38"
               fontSize={14}
               fontWeight={700}
               textAnchor="middle"

@@ -191,13 +191,13 @@ export const DiagramSceneComponent: React.FC<DiagramSceneProps> = ({
 
       <div className="blu-diagram-container">
         {scene.diagram_type === "fraction_bar" && scene.fraction_bar ? (
-          <FractionBar spec={scene.fraction_bar} progress={progress} heading={scene.heading} />
+          <FractionBar spec={scene.fraction_bar} progress={progress} />
         ) : scene.diagram_type === "number_line" && scene.number_line ? (
-          <NumberLine spec={scene.number_line} progress={progress} heading={scene.heading} />
+          <NumberLine spec={scene.number_line} progress={progress} />
         ) : scene.diagram_type === "proportion_table" && scene.proportion_table ? (
-          <ProportionTable spec={scene.proportion_table} progress={progress} heading={scene.heading} />
+          <ProportionTable spec={scene.proportion_table} progress={progress} />
         ) : scene.diagram_type === "science_diagram" && scene.science_diagram ? (
-          <ScienceDiagram spec={scene.science_diagram} progress={progress} heading={scene.heading} />
+          <ScienceDiagram spec={scene.science_diagram} progress={progress} />
         ) : layout.nodes.length === 0 ? (
           <div style={{ color: "var(--blu-muted)", fontSize: 18 }}>
             No diagram nodes provided.
@@ -218,7 +218,7 @@ export const DiagramSceneComponent: React.FC<DiagramSceneProps> = ({
                 markerHeight="8"
                 orient="auto-start-reverse"
               >
-                <path d="M 0 1 L 11 6 L 0 11 z" fill="#38BDF8" />
+                <path d="M 0 1 L 11 6 L 0 11 z" fill="#234E3C" />
               </marker>
               <marker
                 id="diagram-arrow-muted"
@@ -229,7 +229,7 @@ export const DiagramSceneComponent: React.FC<DiagramSceneProps> = ({
                 markerHeight="8"
                 orient="auto-start-reverse"
               >
-                <path d="M 0 1 L 11 6 L 0 11 z" fill="rgba(148, 163, 184, 0.4)" />
+                <path d="M 0 1 L 11 6 L 0 11 z" fill="#CBD5E1" />
               </marker>
               <filter id="nodeGlow" x="-20%" y="-20%" width="140%" height="140%">
                 <feGaussianBlur stdDeviation="8" result="blur" />
@@ -285,10 +285,10 @@ export const DiagramSceneComponent: React.FC<DiagramSceneProps> = ({
                     fill="none"
                     stroke={
                       isEdgeActive
-                        ? "#38BDF8"
+                        ? "#234E3C"
                         : isEdgePast
-                        ? "rgba(52, 211, 153, 0.7)"
-                        : "rgba(148, 163, 184, 0.3)"
+                        ? "#C87A64"
+                        : "#CBD5E1"
                     }
                     strokeWidth={isEdgeActive ? 3 : 2}
                     strokeDasharray={isEdgeActive ? "none" : isEdgePast ? "none" : "5 5"}
@@ -307,8 +307,8 @@ export const DiagramSceneComponent: React.FC<DiagramSceneProps> = ({
                         width="90"
                         height="24"
                         rx="6"
-                        fill="#111A2E"
-                        stroke={isEdgeActive ? "#38BDF8" : "rgba(255, 255, 255, 0.15)"}
+                        fill="#FFFFFF"
+                        stroke={isEdgeActive ? "#234E3C" : "#E8E2D5"}
                         strokeWidth="1"
                       />
                       <text
@@ -341,16 +341,16 @@ export const DiagramSceneComponent: React.FC<DiagramSceneProps> = ({
               const opacity = nodeProgress;
 
               const strokeColor = isActive
-                ? "#38BDF8"
+                ? "#234E3C"
                 : isPast
-                ? "#34D399"
-                : "rgba(56, 189, 248, 0.25)";
-              const strokeWidth = isActive ? 3 : 1.5;
+                ? "#C87A64"
+                : "#E8E2D5";
+              const strokeWidth = isActive ? 2.5 : 1.5;
               const fillColor = isActive
-                ? "#17243B"
+                ? "#EBF5EF"
                 : isPast
-                ? "rgba(17, 26, 46, 0.95)"
-                : "rgba(11, 16, 32, 0.85)";
+                ? "#FAF7F2"
+                : "#FFFFFF";
 
               return (
                 <g
@@ -413,7 +413,7 @@ export const DiagramSceneComponent: React.FC<DiagramSceneProps> = ({
                     textAnchor="middle"
                     className="blu-diagram-label"
                     style={{
-                      fill: isActive ? "#F8FAFC" : isPast ? "#E2E8F0" : "#94A3B8",
+                      fill: isActive ? "#234E3C" : isPast ? "#1C2B38" : "#64748B",
                       fontWeight: isActive ? 700 : 600,
                     }}
                   >

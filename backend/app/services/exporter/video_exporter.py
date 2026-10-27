@@ -268,21 +268,14 @@ class FrameRenderer:
 
         # Palette tokens
 
-        self.bg_color = (11, 16, 32)            # #0B1020 Dark navy
-
-        self.surface_color = (17, 26, 46)       # #111A2E Deep slate
-
-        self.border_color = (30, 41, 59)        # #1E293B
-
-        self.primary_blue = (56, 189, 248)      # #38BDF8 Sky blue
-
-        self.accent_green = (52, 211, 153)      # #34D399 Emerald
-
-        self.text_white = (248, 250, 252)       # #F8FAFC
-
-        self.text_muted = (148, 163, 184)       # #94A3B8
-
-        self.code_bg = (15, 23, 42)             # #0F172A
+        self.bg_color = (251, 249, 244)          # #FBF9F4 Warm editorial paper
+        self.surface_color = (255, 255, 255)     # #FFFFFF Pure white card
+        self.border_color = (232, 226, 213)      # #E8E2D5 Muted parchment border
+        self.primary_blue = (35, 78, 60)         # #234E3C Forest green
+        self.accent_green = (200, 122, 100)      # #C87A64 Terracotta
+        self.text_white = (28, 43, 56)           # #1C2B38 Deep charcoal
+        self.text_muted = (100, 116, 139)        # #64748B Slate gray
+        self.code_bg = (35, 45, 60)              # #232D3C Slate dark for code
 
 
 
@@ -816,7 +809,7 @@ class FrameRenderer:
 
 
 
-        draw.rounded_rectangle([bx, by, bx + box_w, by + box_h], radius=12, fill=(17, 26, 46), outline=(56, 189, 248), width=1)
+        draw.rounded_rectangle([bx, by, bx + box_w, by + box_h], radius=12, fill=(255, 255, 255), outline=(232, 226, 213), width=1)
 
         draw.text((self.width // 2, by + box_h // 2), text, fill=self.text_white, font=self.font_caption, anchor="mm")
 

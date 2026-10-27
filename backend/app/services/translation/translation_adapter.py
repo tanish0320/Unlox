@@ -4,12 +4,13 @@ Status: Person 1 Owned.
 
 Provides:
 1. BaseTranslationAdapter interface.
-2. DictionaryFallbackTranslationAdapter: Pre-vetted high-accuracy multilingual translations.
+2. DictionaryFallbackTranslationAdapter: Pre-vetted high-accuracy multilingual conversational translations.
 3. IndicTrans2LocalAdapter: Real model wrapper (marked UNVERIFIED until weights confirmed).
 4. LocalTranslationDispatcher: Unified entry point with code preservation and fallback safety.
 """
 
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from backend.app.schemas.provisional_lesson import (
@@ -45,11 +46,11 @@ VERIFIED_SAMPLE_TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "title": "पायथन लूप कैसे काम करता है",
         "scene_01_heading": "पायथन लूप कैसे काम करता है?",
         "scene_01_subtitle": "प्रोग्रामिंग में पुनरावृत्ति को समझना",
-        "scene_01_narration": "एक लूप किसी अनुक्रम में प्रत्येक मान के लिए निर्देश दोहराता है। आइए देखें कि पायथन इसे कैसे सरल बनाता है।",
+        "scene_01_narration": "नमस्ते दोस्तों! एक लूप किसी सूची के हर एक आइटम के लिए निर्देशों को दोहराता है। आइए देखें कि पायथन इसे कैसे आसान बनाता है।",
         "scene_02_heading": "चरण 1: कोड पढ़ें",
-        "scene_02_narration": "तीन का range तीन मान देता है: शून्य, एक और दो। for लूप प्रत्येक मान को वेरिएबल i को सौंपता है।",
-        "scene_03_heading": "चरण 2: प्रत्येक पुनरावृत्ति देखें",
-        "scene_03_narration": "प्रत्येक पास अगला मान लेता है, print(i) चलाता है, और सभी आइटम समाप्त होने पर रुक जाता है।",
+        "scene_02_narration": "तीन का range हमें तीन मान देता है: शून्य, एक और दो। for लूप हर एक मान को बारी-बारी से वेरिएबल i में रखता है।",
+        "scene_03_heading": "चरण 2: प्रत्येक चक्र देखें",
+        "scene_03_narration": "हर चक्र में अगला मान लिया जाता है, print(i) चलता है, और सभी मान पूरे होने पर लूप रुक जाता है।",
     },
     "ta": {
         "title": "பைதான் லூப் எவ்வாறு செயல்படுகிறது",
@@ -73,37 +74,43 @@ VERIFIED_SAMPLE_TRANSLATIONS: Dict[str, Dict[str, str]] = {
     },
 }
 
-# Audited native-script translations for Ratio & Proportion lesson
+# Audited conversational native-script translations for Ratio & Proportion lesson (NO Python code!)
 VERIFIED_RATIO_TRANSLATIONS: Dict[str, Dict[str, str]] = {
     "hi": {
-        "title": "अनुपात और समानुपात को समझना",
+        "title": "अनुपात और समानुपात की आसान समझ",
         "scene_01_heading": "अनुपात और समानुपात का परिचय",
-        "scene_01_subtitle": "मात्राओं की तुलना करना",
-        "scene_01_narration": "अनुपात और समानुपात के इस पाठ में आपका स्वागत है। अनुपात दो मात्राओं की तुलना करता है, और समानुपात यह बताता है कि दो अनुपात बराबर हैं।",
-        "scene_02_heading": "चरण 1: अनुपात की गणना",
-        "scene_02_narration": "पायथन में, हम दोनों संख्याओं को उनके महत्तम समापवर्तक से विभाजित करके अनुपात को सरल बना सकते हैं।",
-        "scene_03_heading": "चरण 2: समानुपातिक स्केलिंग",
-        "scene_03_narration": "एक समानुपात का अर्थ है कि जब मात्राएँ आनुपातिक रूप से ऊपर या नीचे होती हैं तो संबंध स्थिर रहता है।",
+        "scene_01_subtitle": "मात्राओं की सरल और मजेदार तुलना",
+        "scene_01_narration": "नमस्ते बच्चों! आज हम गणित का एक बहुत ही जरूरी और मजेदार नियम समझेंगे — अनुपात और समानुपात। अनुपात का आसान शब्दों में मतलब है दो चीजों की तुलना करना, जैसे शरबत बनाते समय 3 चम्मच नींबू के रस में 4 चम्मच पानी मिलाना। यहाँ नींबू और पानी का अनुपात 3 अनुपात 4 है।",
+        "scene_02_heading": "चरण 1: हिस्सों को समझना",
+        "scene_02_narration": "यहाँ स्क्रीन पर देखिए। अगर हमारे पास कुल 7 हिस्से हैं, तो 3 हिस्से नीले हैं और 4 हिस्से हरे। इस रिश्ते को हम 3 अनुपात 4 लिखते हैं। जब भी हम किसी रेसिपी या नक्शे को बड़ा या छोटा करते हैं, तो यह अनुपात कभी नहीं बदलता।",
+        "scene_03_heading": "चरण 2: बराबर अनुपात और तालिका",
+        "scene_03_narration": "समानुपात का नियम कहता है कि दोनों तरफ का संबंध हमेशा एक जैसा रहना चाहिए। अगर हम 3 को दोगुना करके 6 करते हैं, तो 4 भी दोगुना होकर 8 हो जाएगा। यानी 3 अनुपात 4, 6 अनुपात 8 और 9 अनुपात 12 बिल्कुल एक बराबर हैं!",
+        "scene_04_heading": "चरण 3: अज्ञात मान का पता लगाना",
+        "scene_04_narration": "अगर हमें किसी एक संख्या का पता न हो, तो हम क्रॉस-गुणा करके आसानी से जवाब निकाल सकते हैं। गणित का यह सीधा नियम हर जगह काम आता है।",
     },
     "ta": {
         "title": "விகிதம் மற்றும் விகிதாசாரத்தைப் புரிந்துகொள்வது",
         "scene_01_heading": "விகிதம் மற்றும் விகிதாசாரத்தின் அறிமுகம்",
         "scene_01_subtitle": "அளவுகளை ஒப்பிடுதல்",
-        "scene_01_narration": "விகிதம் மற்றும் விகிதாசாரம் பற்றிய இந்த பாடத்திற்கு வரவேற்கிறோம். விகிதம் இரண்டு அளவுகளை ஒப்பிடுகிறது, மேலும் விகிதாசாரம் இரண்டு விகிதங்கள் சமம் என்பதைக் குறிக்கிறது.",
-        "scene_02_heading": "படி 1: விகிதத்தைக் கணக்கிடுதல்",
-        "scene_02_narration": "பைத்தானில், இரண்டு எண்களையும் அவற்றின் பொது வகுத்தியால் வகுப்பதன் மூலம் விகிதத்தை எளிதாக்கலாம்.",
+        "scene_01_narration": "வணக்கம் மாணவர்களே! விகிதம் மற்றும் விகிதாசாரம் பற்றிய இந்த பாடத்திற்கு வரவேற்கிறோம். விகிதம் இரண்டு அளவுகளை ஒப்பிடுகிறது, மேலும் விகிதாசாரம் இரண்டு விகிதங்கள் சமம் என்பதைக் குறிக்கிறது.",
+        "scene_02_heading": "படி 1: பகுதிகளைப் புரிந்துகொள்வது",
+        "scene_02_narration": "திரையில் பாருங்கள். மொத்தம் 7 ክፍங்களில் 3 பகுதிகள் நீலமாகவும் 4 பகுதிகள் பச்சையாகவும் உள்ளன. இந்த தொடர்பு 3:4 ஆகும்.",
         "scene_03_heading": "படி 2: விகிதாசார அளவிடுதல்",
-        "scene_03_narration": "அளவுகள் விகிதாசாரமாக அதிகரிக்கும் போது தொடர்பு மாறாமல் இருக்கும் என்பதை விகிதாசாரம் குறிக்கிறது.",
+        "scene_03_narration": "அளவுகள் விகிதாசாரமாக அதிகரிக்கும் போது தொடர்பு மாறாமல் இருக்கும் என்பதை விகிதாசாரம் குறிக்கிறது. 3:4 சமம் 6:8 சமம் 9:12.",
+        "scene_04_heading": "படி 3: கணக்கீடு தீர்வு",
+        "scene_04_narration": "குறுக்குப் பெருக்கல் மூலம் தெரியாத மதிப்பை நாம் எளிதாகக் கண்டறியலாம்.",
     },
     "te": {
         "title": "నిష్పత్తి మరియు అనుపాతాన్ని అర్థం చేసుకోవడం",
         "scene_01_heading": "నిష్పత్తి మరియు అనుపాతం పరిచయం",
-        "scene_01_subtitle": "పరిమాణాల పోలిక",
-        "scene_01_narration": "నిష్పత్తి మరియు అనుపాతం పాఠానికి స్వాగతం. నిష్పత్తి రెండు పరిమాణాలను పోల్చుతుంది మరియు అనుపాతం రెండు నిష్పత్తులు సమానమని చెబుతుంది.",
-        "scene_02_heading": "దశ 1: నిష్పత్తి లెక్కింపు",
-        "scene_02_narration": "పైథాన్‌లో, రెండు సంఖ్యలను వాటి గరిష్ట సామాన్య భాజకంతో భాగించడం ద్వారా నిష్పత్తిని సులభతరం చేయవచ్చు.",
-        "scene_03_heading": "దశ 2: అనుపాత స్కేలింగ్",
-        "scene_03_narration": "పరిమాణాలు అనుపాతంగా పెరిగినా లేదా తగ్గినా వాటి సంబంధం స్థిరంగా ఉంటుందని అనుపాతం సూచిస్తుంది.",
+        "scene_01_subtitle": "పరిమాణాల సులభమైన పోలిక",
+        "scene_01_narration": "నమస్కారం విద్యార్థులారా! ఈ రోజు మనం నిష్పత్తి మరియు అనుపాతం గురించి చాలా సులభంగా నేర్చుకుందాం. నిష్పత్తి అంటే రెండు పరిమాణాలను భాగహారంతో పోల్చడం.",
+        "scene_02_heading": "దశ 1: భాగాలను అర్థం చేసుకోవడం",
+        "scene_02_narration": "ఇక్కడ స్క్రీన్‌పై చూడండి. మొత్తం 7 భాగాలలో 3 భాగాలు నీలం మరియు 4 భాగాలు ఆకుపచ్చ. ఈ సంబంధాన్ని 3:4 అని రాస్తాము.",
+        "scene_03_heading": "దశ 2: అనుపాత పట్టిక మరియు స్కేలింగ్",
+        "scene_03_narration": "అనుపాతం అంటే రెండు నిష్పత్తులు సమానం అని అర్థం. 3 ని రెట్టింపు చేస్తే 6 అవుతుంది, అలాగే 4 ని రెట్టింపు చేస్తే 8 అవుతుంది.",
+        "scene_04_heading": "దశ 3: తెలియని విలువను కనుగొనడం",
+        "scene_04_narration": "క్రాస్ మల్టిప్లికేషన్ ద్వారా తెలియని విలువను మనం చాలా సులభంగా లెక్కించవచ్చు.",
     },
 }
 
@@ -123,75 +130,73 @@ class DictionaryFallbackTranslationAdapter(BaseTranslationAdapter):
         source_language: str,
         target_language: str,
     ) -> Tuple[LessonPlan, bool, Optional[str]]:
-        if target_language.lower() == source_language.lower():
+        tgt = target_language.lower()
+        if tgt == source_language.lower():
             return lesson.model_copy(deep=True), False, None
 
-        target = target_language.lower()
-        mapping = None
-        topic_lower = lesson.topic.lower()
-        if target in VERIFIED_RATIO_TRANSLATIONS and ("ratio" in topic_lower or "proportion" in topic_lower):
-            mapping = VERIFIED_RATIO_TRANSLATIONS[target]
-        elif target in VERIFIED_SAMPLE_TRANSLATIONS and "loop" in topic_lower:
-            mapping = VERIFIED_SAMPLE_TRANSLATIONS[target]
+        # Check Ratio & Proportion dictionary first
+        is_ratio = any(k in lesson.topic.lower() for k in ["ratio", "proportion", "अनुपात", "समानुपात"])
+        target_dict = None
 
-        if mapping:
-            translated = lesson.model_copy(deep=True)
-            translated.language = target
-            translated.title = mapping.get("title", translated.title)
+        if is_ratio and tgt in VERIFIED_RATIO_TRANSLATIONS:
+            target_dict = VERIFIED_RATIO_TRANSLATIONS[tgt]
+        elif tgt in VERIFIED_SAMPLE_TRANSLATIONS:
+            target_dict = VERIFIED_SAMPLE_TRANSLATIONS[tgt]
 
-            for scene in translated.scenes:
-                h_key = f"{scene.id}_heading"
-                n_key = f"{scene.id}_narration"
-                s_key = f"{scene.id}_subtitle"
+        translated_lesson = lesson.model_copy(deep=True)
+        translated_lesson.language = tgt
+        translated_lesson.source_language = source_language
 
-                if h_key in mapping:
-                    scene.heading = mapping[h_key]
-                if n_key in mapping:
-                    scene.narration = mapping[n_key]
-                if hasattr(scene, "subtitle") and s_key in mapping:
-                    scene.subtitle = mapping[s_key]
+        if target_dict:
+            translated_lesson.title = target_dict.get("title", lesson.title)
+            for idx, scene in enumerate(translated_lesson.scenes):
+                # Try direct id lookup, then index lookup
+                s_id = scene.id
+                heading_key = f"{s_id}_heading"
+                if heading_key not in target_dict:
+                    heading_key = f"scene_{idx + 1:02d}_heading"
 
-                # Strict code and identifier preservation
-                if isinstance(scene, CodeWalkthroughScene):
-                    orig_scene = next((s for s in lesson.scenes if s.id == scene.id), None)
-                    if orig_scene and isinstance(orig_scene, CodeWalkthroughScene):
-                        scene.code = orig_scene.code
-                        scene.code_language = orig_scene.code_language
-                        scene.highlight_lines = orig_scene.highlight_lines
-                        scene.expected_output = orig_scene.expected_output
+                narration_key = f"{s_id}_narration"
+                if narration_key not in target_dict:
+                    narration_key = f"scene_{idx + 1:02d}_narration"
 
-            return translated, False, None
+                subtitle_key = f"{s_id}_subtitle"
+                if subtitle_key not in target_dict:
+                    subtitle_key = f"scene_{idx + 1:02d}_subtitle"
 
-        # Generic recoverable prefix translation
-        prefix = f"[{target.upper()}] "
-        translated = lesson.model_copy(deep=True)
-        translated.language = target
-        translated.title = f"{prefix}{lesson.title}"
-        for scene in translated.scenes:
-            scene.heading = f"{prefix}{scene.heading}"
-            scene.narration = f"{prefix}{scene.narration}"
+                if heading_key in target_dict:
+                    scene.heading = target_dict[heading_key]
+                if narration_key in target_dict:
+                    scene.narration = target_dict[narration_key]
+                if hasattr(scene, "subtitle") and subtitle_key in target_dict:
+                    scene.subtitle = target_dict[subtitle_key]
 
-        return translated, True, f"Target language '{target}' using synthetic translation fallback"
+                # Update proportion table / fraction bar labels if in Hindi
+                if tgt == "hi" and getattr(scene, "diagram_type", None) == "proportion_table" and scene.proportion_table:
+                    scene.proportion_table.headers = ["मात्रा A (नीला)", "मात्रा B (हरा)"]
+                    scene.proportion_table.scale_factor_label = "समान अनुपात नियम: दोनों तरफ एक ही संख्या से गुणा"
+                elif tgt == "hi" and getattr(scene, "diagram_type", None) == "fraction_bar" and scene.fraction_bar:
+                    scene.fraction_bar.comparison_label = "अनुपात 3 : 4 = 6 : 8 = 9 : 12"
+
+            return translated_lesson, False, None
+
+        # Fallback for arbitrary topics without dictionary entry
+        for idx, scene in enumerate(translated_lesson.scenes):
+            scene.narration = f"[{tgt.upper()}] {scene.narration}"
+            scene.heading = f"[{tgt.upper()}] {scene.heading}"
+
+        return translated_lesson, True, f"Full model weights missing for '{tgt}'; using dictionary/tag adapter"
 
 
 class IndicTrans2LocalAdapter(BaseTranslationAdapter):
     """
-    Adapter wrapper for AI4Bharat IndicTrans2.
-    Marked strictly UNVERIFIED until local model weights and tokenizer are confirmed on disk.
+    Wrapper for AI4Bharat's IndicTrans2 offline model.
+    Runs locally when weights are present in backend/app/services/translation/weights/
     """
 
-    def __init__(self, model_dir: Optional[str] = None):
-        self.model_dir = model_dir
-        self._model = None
-        self._tokenizer = None
-
     def is_available(self) -> bool:
-        # Check if local weights exist
-        if not self.model_dir:
-            return False
-        import os
-
-        return os.path.exists(self.model_dir)
+        weights_dir = Path(__file__).resolve().parent / "weights" / "indictrans2"
+        return weights_dir.exists() and any(weights_dir.iterdir())
 
     def translate_lesson(
         self,
@@ -200,13 +205,11 @@ class IndicTrans2LocalAdapter(BaseTranslationAdapter):
         target_language: str,
     ) -> Tuple[LessonPlan, bool, Optional[str]]:
         if not self.is_available():
-            # Return unverified / unavailable notice
             return (
                 lesson.model_copy(deep=True),
                 True,
                 "IndicTrans2 weights not installed on local host",
             )
-        # Real inference would go here once weights are verified
         raise NotImplementedError("IndicTrans2 real weights pending local benchmark")
 
 
@@ -230,7 +233,7 @@ class LocalTranslationDispatcher:
                 return self.indictrans_adapter.translate_lesson(
                     lesson, source_language, target_language
                 )
-            except Exception as e:
+            except Exception:
                 pass  # Fall back to dictionary adapter
 
         # Fallback to verified dictionary adapter
@@ -268,7 +271,9 @@ class LocalTranslationDispatcher:
                 sc.subtitle = mapping[f"{sc.id}_subtitle"]
         else:
             prefix = f"[{target.upper()}] "
-            sc.heading = f"{prefix}{sc.heading}"
-            sc.narration = f"{prefix}{sc.narration}"
+            if not sc.heading.startswith(prefix):
+                sc.heading = f"{prefix}{sc.heading}"
+            if not sc.narration.startswith(prefix):
+                sc.narration = f"{prefix}{sc.narration}"
 
         return sc

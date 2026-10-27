@@ -195,10 +195,10 @@ body {
 
 /* Main Content Grid */
 .bvt-main-content {
-  padding: 36px 40px;
+  padding: 32px 36px;
   display: grid;
-  grid-template-columns: 560px 1fr;
-  gap: 36px;
+  grid-template-columns: minmax(380px, 460px) minmax(580px, 1fr);
+  gap: 32px;
   max-width: 1700px;
 }
 
@@ -628,11 +628,37 @@ body {
 /* Player Stage Container */
 .bvt-player-stage-wrap {
   width: 100%;
-  background: #0B1020;
+  aspect-ratio: 16 / 9;
+  background: var(--blu-bg, #FBF9F4);
   border-radius: 14px;
   overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 8px 24px rgba(28, 43, 56, 0.1);
+  border: 1px solid var(--bvt-border, #E8E2D5);
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bvt-player-stage-wrap:fullscreen,
+.bvt-player-stage-wrap:-webkit-full-screen {
+  width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+  border: none;
+  background: #0B0F17;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.bvt-player-stage-wrap:fullscreen .blu-scene-viewport,
+.bvt-player-stage-wrap:-webkit-full-screen .blu-scene-viewport {
+  width: 100% !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  aspect-ratio: 16 / 9;
 }
 
 /* Player Controls */

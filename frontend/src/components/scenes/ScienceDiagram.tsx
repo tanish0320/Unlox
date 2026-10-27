@@ -8,7 +8,7 @@ interface ScienceDiagramProps {
   heading?: string;
 }
 
-export const ScienceDiagram: React.FC<ScienceDiagramProps> = ({ spec, progress, heading }) => {
+export const ScienceDiagram: React.FC<ScienceDiagramProps> = ({ spec, progress }) => {
   const eased = easeOutCubic(progress);
   const pulse = deterministicPulse(progress, 2.5);
   const elements = spec.elements || [];
@@ -19,24 +19,7 @@ export const ScienceDiagram: React.FC<ScienceDiagramProps> = ({ spec, progress, 
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", padding: "6px 0" }}>
-      {heading && (
-        <div style={{ fontSize: 18, fontWeight: 700, color: "#F8FAFC", marginBottom: 12 }}>
-          {heading}
-        </div>
-      )}
-
       <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} fill="none">
-        <defs>
-          <filter id="sciGlow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="8" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-          </filter>
-          <linearGradient id="sciBgGrad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#0F172A" stopOpacity="0.95" />
-            <stop offset="100%" stopColor="#1E293B" stopOpacity="0.85" />
-          </linearGradient>
-        </defs>
-
         {/* Ambient Stage Background */}
         <rect
           x={10}
@@ -44,15 +27,15 @@ export const ScienceDiagram: React.FC<ScienceDiagramProps> = ({ spec, progress, 
           width={width - 20}
           height={height - 20}
           rx={16}
-          fill="url(#sciBgGrad)"
-          stroke="rgba(56, 189, 248, 0.3)"
+          fill="#FFFFFF"
+          stroke="#E8E2D5"
           strokeWidth={1.5}
         />
 
         {/* Subject Header Badge */}
         <g transform={`translate(${width / 2}, 44)`}>
-          <rect x={-140} y={-14} width={280} height={28} rx={14} fill="#1E3A8A" stroke="#38BDF8" strokeWidth={1} />
-          <text x={0} y={4} fill="#93C5FD" fontSize={12} fontWeight={700} textAnchor="middle" letterSpacing="0.08em">
+          <rect x={-140} y={-14} width={280} height={28} rx={14} fill="#EBF5EF" stroke="#234E3C" strokeWidth={1} />
+          <text x={0} y={4} fill="#234E3C" fontSize={12} fontWeight={700} textAnchor="middle" letterSpacing="0.08em">
             SYSTEM: {spec.subject.toUpperCase()}
           </text>
         </g>
@@ -71,8 +54,8 @@ export const ScienceDiagram: React.FC<ScienceDiagramProps> = ({ spec, progress, 
           return (
             <g key={`el-${idx}`} transform={`translate(${px}, ${py}) scale(${scale})`} opacity={elProgress}>
               {/* Pulsing Target Pin */}
-              <circle cx={0} cy={0} r={18} fill="rgba(56, 189, 248, 0.2)" filter="url(#sciGlow)" />
-              <circle cx={0} cy={0} r={8} fill="#38BDF8" />
+              <circle cx={0} cy={0} r={16} fill="rgba(35, 78, 60, 0.15)" />
+              <circle cx={0} cy={0} r={8} fill="#234E3C" />
               <circle cx={0} cy={0} r={3} fill="#FFFFFF" />
 
               {/* Element Label Card */}
@@ -83,15 +66,15 @@ export const ScienceDiagram: React.FC<ScienceDiagramProps> = ({ spec, progress, 
                   width={180}
                   height={el.role ? 48 : 34}
                   rx={8}
-                  fill="#0B132B"
-                  stroke="rgba(56, 189, 248, 0.5)"
-                  strokeWidth={1}
+                  fill="#FFFFFF"
+                  stroke="#E8E2D5"
+                  strokeWidth={1.5}
                 />
-                <text x={12} y={20} fill="#F8FAFC" fontSize={13} fontWeight={700}>
+                <text x={12} y={20} fill="#1C2B38" fontSize={13} fontWeight={700}>
                   {el.name}
                 </text>
                 {el.role && (
-                  <text x={12} y={36} fill="#94A3B8" fontSize={11} fontWeight={500}>
+                  <text x={12} y={36} fill="#64748B" fontSize={11} fontWeight={500}>
                     {el.role}
                   </text>
                 )}
@@ -103,7 +86,7 @@ export const ScienceDiagram: React.FC<ScienceDiagramProps> = ({ spec, progress, 
         {/* Process Flow Timeline at Bottom if provided */}
         {flow.length > 0 && (
           <g transform={`translate(60, ${height - 50})`}>
-            <rect x={0} y={-16} width={width - 120} height={38} rx={8} fill="#0A0F1D" stroke="rgba(255, 255, 255, 0.1)" />
+            <rect x={0} y={-16} width={width - 120} height={38} rx={8} fill="#F4EFE6" stroke="#E8E2D5" />
             {flow.map((step, sIdx) => {
               const stepWidth = (width - 140) / flow.length;
               const sx = sIdx * stepWidth + stepWidth / 2;
@@ -111,7 +94,7 @@ export const ScienceDiagram: React.FC<ScienceDiagramProps> = ({ spec, progress, 
 
               return (
                 <g key={`step-${sIdx}`} transform={`translate(${sx}, 6)`} opacity={isStepActive ? 1 : 0.4}>
-                  <text x={0} y={0} fill={isStepActive ? "#34D399" : "#64748B"} fontSize={12} fontWeight={700} textAnchor="middle">
+                  <text x={0} y={0} fill={isStepActive ? "#234E3C" : "#64748B"} fontSize={12} fontWeight={700} textAnchor="middle">
                     {sIdx + 1}. {step}
                   </text>
                 </g>

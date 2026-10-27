@@ -140,7 +140,7 @@ class LessonPlan(BaseModel):
         default="en", description="Source ISO-639-1 language code (e.g., 'en')"
     )
     target_duration_seconds: Optional[int] = Field(
-        default=60, ge=30, le=120, description="Requested target duration hint (30-120s)"
+        default=60, ge=30, le=300, description="Requested target duration hint (30-300s, 1-5 mins)"
     )
     scenes: List[SceneVariant] = Field(
         ..., min_length=3, max_length=6, description="Sequence of 3 to 6 animated scenes"

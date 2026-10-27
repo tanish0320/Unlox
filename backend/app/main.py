@@ -73,7 +73,7 @@ class GenerateRequest(BaseModel):
     topic: str = Field(..., min_length=2, max_length=200)
     level: Literal["beginner", "intermediate"] = "beginner"
     language: str = Field(default="en")
-    target_duration_seconds: int = Field(default=45, ge=30, le=120)
+    target_duration_seconds: int = Field(default=60, ge=30, le=300)
     voice_id: Optional[str] = Field(default=None, description="Optional chosen TTS voice or persona")
 
 

@@ -177,8 +177,8 @@ def test_unicode_preservation_in_captions():
     for plan in [hi_plan, ta_plan, te_plan]:
         code_scene = plan.scenes[1]
         assert isinstance(code_scene, CodeWalkthroughScene)
-        assert code_scene.code == "for i in range(3):\n    print(i)"
-        assert code_scene.highlight_lines == [1]
+        assert code_scene.code == lesson.scenes[1].code
+        assert code_scene.highlight_lines == lesson.scenes[1].highlight_lines
 
 
 def test_real_windows_tts_offline_synthesis(tmp_path: Path):

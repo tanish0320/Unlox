@@ -1,33 +1,48 @@
-﻿/**
+/**
  * Blu Visual Teacher Design Tokens
- * Premium educational motion-design system tokens.
- * Inherits Person 3's theme/tokens.css variables with robust offline fallbacks.
+ * Warm Educational Editorial Motion-Design System.
+ * Warm cream/paper surfaces, forest green, sage, terracotta, and gold accents.
  */
 
 :root {
-  --blu-bg: var(--app-bg, var(--color-bg, var(--theme-background, #0B1020)));
-  --blu-surface: var(--app-surface, var(--color-surface, var(--theme-surface, #111A2E)));
-  --blu-surface-alt: var(--app-surface-alt, var(--color-surface-alt, #17243B));
-  --blu-surface-glass: var(--app-surface-glass, rgba(17, 26, 46, 0.85));
-  --blu-border: var(--app-border, var(--color-border, rgba(56, 189, 248, 0.2)));
-  --blu-border-strong: var(--app-border-strong, rgba(56, 189, 248, 0.45));
-  --blu-primary: var(--app-primary, var(--color-primary, var(--theme-primary, #38BDF8)));
-  --blu-primary-glow: var(--app-primary-glow, rgba(56, 189, 248, 0.35));
-  --blu-secondary: var(--app-secondary, var(--color-secondary, var(--theme-secondary, #A78BFA)));
-  --blu-secondary-glow: var(--app-secondary-glow, rgba(167, 139, 250, 0.35));
-  --blu-success: var(--app-success, var(--color-success, #34D399));
-  --blu-warning: var(--app-warning, var(--color-warning, #FBBF24));
-  --blu-danger: var(--app-danger, var(--color-danger, #F87171));
-  --blu-text: var(--app-text, var(--color-text, var(--theme-text, #F8FAFC)));
-  --blu-text-secondary: var(--app-text-secondary, #CBD5E1);
-  --blu-muted: var(--app-muted, var(--color-muted, #94A3B8));
-  --blu-code-bg: var(--app-code-bg, #0D1326);
-  --blu-code-highlight: var(--app-code-highlight, rgba(56, 189, 248, 0.16));
-  --blu-radius-sm: var(--app-radius-sm, 6px);
-  --blu-radius-md: var(--app-radius-md, 12px);
-  --blu-radius-lg: var(--app-radius-lg, 20px);
+  --blu-bg: var(--app-bg, #FBF9F4);
+  --blu-surface: var(--app-surface, #FFFFFF);
+  --blu-surface-alt: var(--app-surface-alt, #F5F1E8);
+  --blu-surface-glass: var(--app-surface-glass, rgba(255, 255, 255, 0.92));
+  --blu-border: var(--app-border, #E8E2D5);
+  --blu-border-strong: var(--app-border-strong, #D8D0C0);
+  
+  --blu-primary: var(--app-primary, #234E3C);          /* Deep Forest Green */
+  --blu-primary-mid: #2F6B53;                          /* Mid Forest Green */
+  --blu-primary-glow: rgba(35, 78, 60, 0.2);
+  --blu-secondary: #C87A64;                            /* Terracotta */
+  --blu-secondary-glow: rgba(200, 122, 100, 0.25);
+  --blu-accent-gold: #D97706;                          /* Restrained Gold */
+  --blu-accent-sage: #4A7C59;                          /* Sage */
+  --blu-sage-light: #EBF5EF;                           /* Soft Sage Tag */
+  
+  --blu-success: #2F6B53;
+  --blu-warning: #D97706;
+  --blu-danger: #DC2626;
+  
+  --blu-text: var(--app-text, #1C2B38);                /* Deep Charcoal Text */
+  --blu-text-secondary: #475569;
+  --blu-muted: var(--app-muted, #64748B);
+  
+  --blu-code-bg: #1E293B;                              /* Crisp Dark Slate for Code Windows */
+  --blu-code-highlight: rgba(56, 189, 248, 0.18);
+  
+  --blu-font-display: 'Fraunces', Georgia, serif;
+  --blu-font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --blu-font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  --blu-font-hand: 'Caveat', cursive, sans-serif;
+  
+  --blu-radius-sm: 6px;
+  --blu-radius-md: 12px;
+  --blu-radius-lg: 18px;
   --blu-radius-full: 9999px;
-  --blu-shadow-card: var(--app-shadow-card, 0 10px 30px -5px rgba(0, 0, 0, 0.5), 0 0 20px rgba(56, 189, 248, 0.1));
-  --blu-shadow-glow: var(--app-shadow-glow, 0 0 35px rgba(56, 189, 248, 0.25));
-  --blu-shadow-node: var(--app-shadow-node, 0 4px 14px rgba(0, 0, 0, 0.4));
+  
+  --blu-shadow-card: 0 8px 24px -4px rgba(28, 43, 56, 0.08), 0 2px 6px rgba(28, 43, 56, 0.04);
+  --blu-shadow-glow: 0 0 24px rgba(35, 78, 60, 0.12);
+  --blu-shadow-node: 0 4px 12px rgba(28, 43, 56, 0.06);
 }

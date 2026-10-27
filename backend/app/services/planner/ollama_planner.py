@@ -4,7 +4,7 @@ Status: Person 1 Owned.
 
 Provides structured schema-constrained JSON generation via Ollama,
 with bounded 1-retry, strict Pydantic validation, timeout handling,
-and deterministic offline fallback.
+instructional mode guidance, and deterministic offline fallback.
 """
 
 import json
@@ -14,6 +14,7 @@ import httpx
 from pydantic import ValidationError
 
 from backend.app.schemas.provisional_lesson import LessonPlan
+from backend.app.services.planner.instructional_modes import detect_instructional_mode
 
 
 PLANNER_SYSTEM_PROMPT = """You are Blu Visual Teacher, an expert educational curriculum planner.
@@ -24,11 +25,15 @@ Never include markdown formatting, backticks, conversational pleasantries, or co
 RULES:
 1. Output MUST be a valid JSON object matching the LessonPlan schema.
 2. The lesson must contain between 3 and 6 scenes.
-3. Allowed scene 'type' values are ONLY: 'title_card', 'diagram', 'code_walkthrough'.
-4. In 'code_walkthrough', 'highlight_lines' must be 1-indexed and within the total lines of 'code'.
-5. Narration must be natural, engaging spoken teaching text.
-6. Return JSON ONLY. Do not execute or request execution of code.
-7. In 'diagram' scenes, optionally provide 'diagram_type' ('flowchart', 'number_line', 'fraction_bar', 'proportion_table', 'science_diagram') with relevant spec objects.
+3. INSTRUCTIONAL MODE ENFORCEMENT:
+   - Mathematics (e.g. Ratio and proportion, fractions, geometry): Use 'title_card' and 'diagram' (diagram_type: 'proportion_table', 'fraction_bar', 'number_line'). NEVER output 'code_walkthrough' scenes or Python code for mathematics or general topics!
+   - Science (e.g. Photosynthesis, cells, physics, chemistry): Use 'title_card' and 'diagram' (diagram_type: 'science_diagram' or 'flowchart').
+   - Computer Programming (e.g. Python loops, JavaScript, variables): ONLY for explicit coding topics, use 'code_walkthrough' scenes with 'code', 'highlight_lines', and 'expected_output'.
+   - Social Studies / Humanities: Use 'title_card' and 'diagram' (flowcharts, timelines).
+4. DURATION & DEPTH: Total spoken narration across all scenes must provide sufficient depth for target_duration_seconds (~2.2 words per second of duration).
+5. In 'code_walkthrough', 'highlight_lines' must be 1-indexed and within the total lines of 'code'.
+6. Narration must be natural, engaging spoken teaching text.
+7. Return JSON ONLY. Do not execute or request execution of code.
 """
 
 
@@ -55,22 +60,11 @@ class OllamaLessonPlanner:
                     break
             self.fallback_fixture_path = found_path or (Path("fixtures") / "sample-lesson.json")
 
-        self._cached_fallback: Optional[LessonPlan] = None
-
     def get_fallback_lesson(self, topic: Optional[str] = None) -> LessonPlan:
-        """Loads and returns the verified deterministic fallback lesson fixture."""
-        if self._cached_fallback is None:
-            with open(self.fallback_fixture_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            self._cached_fallback = LessonPlan.model_validate(data)
-        plan = self._cached_fallback.model_copy(deep=True)
-        if topic:
-            plan.topic = topic
-            plan.title = f"Understanding {topic}"
-            plan.scenes[0].heading = f"Introduction to {topic}"
-            plan.scenes[0].narration = (
-                f"Welcome to this lesson on {topic}. We will explore the essential concepts step by step."
-            )
+        """Loads and returns an instruction-mode aware deterministic fallback lesson."""
+        from backend.app.services.planner.mock_planner import MockLessonPlanner
+        planner = MockLessonPlanner()
+        plan, _ = planner.plan_lesson(topic=topic or "How Python Loops Work", level="beginner", language="en")
         return plan
 
     def is_available(self) -> bool:
@@ -83,12 +77,38 @@ class OllamaLessonPlanner:
             return False
 
     def build_prompt(self, topic: str, level: str, target_duration_seconds: int) -> str:
+        mode = detect_instructional_mode(topic)
+        mode_instruction = ""
+        if mode == "math":
+            mode_instruction = (
+                "Instructional Mode: MATHEMATICS.\n"
+                "Use 'title_card' and 'diagram' (with diagram_type: 'proportion_table', 'fraction_bar', or 'number_line').\n"
+                "CRITICAL: Do NOT generate code_walkthrough scenes or Python code. Teach using visual math models."
+            )
+        elif mode == "science":
+            mode_instruction = (
+                "Instructional Mode: SCIENCE.\n"
+                "Use 'title_card' and 'diagram' (with diagram_type: 'science_diagram').\n"
+                "Focus on system nodes, roles, and process steps."
+            )
+        elif mode == "programming":
+            mode_instruction = (
+                "Instructional Mode: PROGRAMMING.\n"
+                "Use 'title_card', 'code_walkthrough' (with executable snippet), and 'diagram' for execution flow."
+            )
+        else:
+            mode_instruction = (
+                "Instructional Mode: CONCEPTUAL EXPLANATION.\n"
+                "Use 'title_card' and 'diagram' (flowcharts, comparison cards)."
+            )
+
         return (
             f"Topic: {topic}\n"
             f"Learner Level: {level}\n"
-            f"Target Duration: {target_duration_seconds} seconds\n\n"
-            "Create a structured lesson plan with 3 to 6 scenes covering this topic.\n"
-            "Ensure on-screen content and narration build conceptual understanding step by step.\n"
+            f"Target Duration: {target_duration_seconds} seconds\n"
+            f"{mode_instruction}\n\n"
+            f"Create a structured lesson plan with 3 to 6 scenes covering this topic.\n"
+            f"Ensure narration provides sufficient spoken duration (~{int(target_duration_seconds * 2.2)} words total across scenes).\n"
             "Output valid JSON only."
         )
 
@@ -109,37 +129,40 @@ class OllamaLessonPlanner:
 
         # Attempt 1
         raw_response, call_err = self._call_ollama(prompt, client=client)
-        if call_err:
-            # Model unreachable or timed out -> fallback directly
-            return self.get_fallback_lesson(topic), True, f"Ollama call failed: {call_err}"
+        if raw_response:
+            plan, val_err = self._parse_and_validate(raw_response)
+            if plan is not None:
+                plan.language = language
+                return plan, False, None
 
-        plan, val_err = self._parse_and_validate(raw_response)
-        if plan:
-            return plan, False, None
-
-        # Bounded Retry (Attempt 2 with corrective feedback)
-        correction_prompt = (
-            f"The previous output was invalid.\n"
-            f"Validation Error: {val_err}\n"
-            f"Original Topic: {topic}\n"
-            f"Correct the mistake and return ONLY valid JSON matching the LessonPlan schema."
-        )
-        retry_raw, retry_err = self._call_ollama(correction_prompt, client=client)
-        if not retry_err:
-            retry_plan, retry_val_err = self._parse_and_validate(retry_raw)
-            if retry_plan:
-                return retry_plan, False, None
-            final_err = f"Validation failed after retry: {retry_val_err}"
+            # Attempt 2: Bounded 1-retry with error feedback
+            retry_prompt = (
+                f"{prompt}\n\n"
+                f"Your previous output failed validation with error: {val_err}\n"
+                f"Please fix and output ONLY valid JSON matching the LessonPlan schema."
+            )
+            raw_retry, _ = self._call_ollama(retry_prompt, client=client)
+            if raw_retry:
+                retry_plan, retry_err = self._parse_and_validate(raw_retry)
+                if retry_plan is not None:
+                    retry_plan.language = language
+                    return retry_plan, False, None
+                err_msg = f"Validation failed after retry: {retry_err}"
+            else:
+                err_msg = "Retry call to Ollama returned empty"
         else:
-            final_err = f"Retry call failed: {retry_err}"
+            err_msg = call_err or "Ollama unreachable or timed out"
 
-        # Fallback after failed retry
-        return self.get_fallback_lesson(topic), True, final_err
+        # Deterministic offline fallback
+        fallback_plan = self.get_fallback_lesson(topic=topic)
+        fallback_plan.level = level if level in ["beginner", "intermediate"] else "beginner"
+        fallback_plan.target_duration_seconds = target_duration_seconds
+        fallback_plan.language = language
+        return fallback_plan, True, err_msg
 
     def _call_ollama(
         self, prompt: str, client: Optional[httpx.Client] = None
     ) -> Tuple[Optional[str], Optional[str]]:
-        """Invokes Ollama API /api/generate with JSON format restriction."""
         payload = {
             "model": self.model,
             "prompt": prompt,
@@ -147,8 +170,7 @@ class OllamaLessonPlanner:
             "stream": False,
             "format": "json",
             "options": {
-                "temperature": 0.3,
-                "top_p": 0.9,
+                "temperature": 0.2,
             },
         }
 
@@ -159,34 +181,33 @@ class OllamaLessonPlanner:
 
         try:
             res = client.post(f"{self.base_url}/api/generate", json=payload)
-            if res.status_code != 200:
-                return None, f"HTTP {res.status_code}: {res.text}"
-            data = res.json()
-            return data.get("response", ""), None
+            if res.status_code == 200:
+                body = res.json()
+                return body.get("response", ""), None
+            return None, f"Ollama returned HTTP {res.status_code}: {res.text[:200]}"
         except httpx.TimeoutException:
-            return None, f"Timeout after {self.timeout_seconds}s"
-        except httpx.ConnectError:
-            return None, f"Could not connect to Ollama at {self.base_url}"
-        except Exception as e:
-            return None, str(e)
+            return None, f"Ollama request Timeout after {self.timeout_seconds}s"
+        except Exception as exc:
+            return None, f"Could not connect to Ollama service: {str(exc)}"
         finally:
             if should_close:
                 client.close()
 
     def _parse_and_validate(
-        self, raw_text: str
+        self, raw_json_str: str
     ) -> Tuple[Optional[LessonPlan], Optional[str]]:
-        """Parses JSON and performs Pydantic validation."""
-        if not raw_text or not raw_text.strip():
-            return None, "Empty response"
-
         try:
-            parsed = json.loads(raw_text.strip())
-        except json.JSONDecodeError as e:
-            return None, f"JSONDecodeError: {e}"
-
-        try:
-            plan = LessonPlan.model_validate(parsed)
-            return plan, None
-        except ValidationError as e:
-            return None, f"Schema ValidationError: {e}"
+            cleaned = raw_json_str.strip()
+            if cleaned.startswith("```"):
+                cleaned = cleaned.split("```")[1]
+                if cleaned.startswith("json"):
+                    cleaned = cleaned[4:].strip()
+            data = json.loads(cleaned)
+            lesson = LessonPlan.model_validate(data)
+            return lesson, None
+        except json.JSONDecodeError as jde:
+            return None, f"Malformed JSON: {str(jde)}"
+        except ValidationError as ve:
+            return None, f"Schema violation: {str(ve)}"
+        except Exception as exc:
+            return None, f"Unexpected error: {str(exc)}"
