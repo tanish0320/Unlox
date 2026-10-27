@@ -9,7 +9,7 @@ Contract Rules:
 4. No executable code payloads.
 """
 
-from typing import List, Literal, Optional, Union, Annotated
+from typing import List, Literal, Optional, Union, Annotated, Dict, Any
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
@@ -38,6 +38,50 @@ class DiagramItem(BaseModel):
     detail: Optional[str] = Field(None, max_length=200)
 
 
+class NumberLineSpec(BaseModel):
+    min_val: float = Field(default=0.0, description="Minimum number line value")
+    max_val: float = Field(default=10.0, description="Maximum number line value")
+    step: float = Field(default=1.0, description="Grid step interval")
+    marked_points: List[Dict[str, Any]] = Field(default_factory=list, description="Points with value, label, color")
+    highlight_range: Optional[List[float]] = Field(default=None, description="Start and end of highlighted interval")
+
+
+class FractionBarSegment(BaseModel):
+    label: str = Field(..., description="Segment description (e.g. 'Part A')")
+    units: float = Field(..., gt=0, description="Unit weight/length of this segment")
+    color: Optional[str] = Field(default=None, description="Hex color accent")
+    fraction_text: Optional[str] = Field(default=None, description="Fraction representation (e.g. '2/5')")
+
+
+class FractionBarSpec(BaseModel):
+    total_units: float = Field(..., gt=0, description="Total units representing the whole bar")
+    segments: List[FractionBarSegment] = Field(..., min_length=1, description="Parts composing the bar")
+    comparison_label: Optional[str] = Field(default=None, description="Comparison formula e.g. '2 : 3 = 4 : 6'")
+
+
+class ProportionTableRow(BaseModel):
+    values: List[float] = Field(..., min_length=2, max_length=4)
+
+
+class ProportionTableSpec(BaseModel):
+    headers: List[str] = Field(..., min_length=2, max_length=4, description="Table column headings")
+    rows: List[ProportionTableRow] = Field(..., min_length=2, description="Equivalent ratio rows")
+    scale_factor_label: Optional[str] = Field(default=None, description="Scaling rule e.g. 'Multiply by 2'")
+
+
+class ScienceElement(BaseModel):
+    name: str = Field(..., min_length=1, max_length=80)
+    role: Optional[str] = Field(default=None, max_length=120)
+    x: int = Field(default=50, ge=0, le=100, description="Percentage X coordinate on 1280 canvas")
+    y: int = Field(default=50, ge=0, le=100, description="Percentage Y coordinate on 720 canvas")
+
+
+class ScienceDiagramSpec(BaseModel):
+    subject: str = Field(..., description="Scientific system name, e.g. 'Photosynthesis', 'Water Cycle'")
+    elements: List[ScienceElement] = Field(..., min_length=1, description="Labelled parts/stages")
+    process_flow: Optional[List[str]] = Field(default=None, description="Chronological process steps")
+
+
 class DiagramScene(BaseScene):
     type: Literal["diagram"] = "diagram"
     items: List[str] = Field(..., min_length=2, max_length=8, description="Ordered steps or conceptual nodes")
@@ -47,6 +91,13 @@ class DiagramScene(BaseScene):
     structured_nodes: Optional[List[DiagramItem]] = Field(
         None, description="Optional detailed nodes for diagram renderers with metadata"
     )
+    diagram_type: Optional[Literal["flowchart", "number_line", "fraction_bar", "proportion_table", "science_diagram"]] = Field(
+        default="flowchart", description="Visual pedagogical diagram type"
+    )
+    number_line: Optional[NumberLineSpec] = None
+    fraction_bar: Optional[FractionBarSpec] = None
+    proportion_table: Optional[ProportionTableSpec] = None
+    science_diagram: Optional[ScienceDiagramSpec] = None
 
 
 class CodeWalkthroughScene(BaseScene):

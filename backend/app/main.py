@@ -74,6 +74,7 @@ class GenerateRequest(BaseModel):
     level: Literal["beginner", "intermediate"] = "beginner"
     language: str = Field(default="en")
     target_duration_seconds: int = Field(default=45, ge=30, le=120)
+    voice_id: Optional[str] = Field(default=None, description="Optional chosen TTS voice or persona")
 
 
 def run_lesson_pipeline(job_id: str, lesson_id: str, req: GenerateRequest):
@@ -154,6 +155,7 @@ def run_lesson_pipeline(job_id: str, lesson_id: str, req: GenerateRequest):
                 text=scene.narration,
                 language=lesson.language,
                 output_path=wav_path,
+                voice_id=req.voice_id,
             )
 
             dur = tts_res.duration_seconds

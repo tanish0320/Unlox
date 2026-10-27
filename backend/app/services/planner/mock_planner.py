@@ -91,7 +91,25 @@ class MockLessonPlanner:
                 {
                     "id": "scene_03",
                     "type": "diagram",
-                    "heading": "Step 2: Proportional Scaling",
+                    "heading": "Step 2: Proportional Scaling Table",
+                    "diagram_type": "proportion_table",
+                    "proportion_table": {
+                        "headers": ["Quantity A", "Quantity B"],
+                        "rows": [
+                            {"values": [3.0, 4.0]},
+                            {"values": [6.0, 8.0]},
+                            {"values": [9.0, 12.0]},
+                        ],
+                        "scale_factor_label": "Constant ratio factor: 3 : 4",
+                    },
+                    "fraction_bar": {
+                        "total_units": 7.0,
+                        "segments": [
+                            {"label": "Part A", "units": 3.0, "color": "#38BDF8", "fraction_text": "3/7"},
+                            {"label": "Part B", "units": 4.0, "color": "#34D399", "fraction_text": "4/7"},
+                        ],
+                        "comparison_label": "3 : 4 = 6 : 8 = 9 : 12",
+                    },
                     "items": [
                         "Base Ratio (3:4)",
                         "Multiply by Factor 2",
@@ -100,6 +118,113 @@ class MockLessonPlanner:
                     ],
                     "layout": "horizontal",
                     "narration": "A proportion means the relationship remains constant as quantities scale up or down proportionally.",
+                },
+            ]
+        elif any(k in topic_lower for k in ['photo', 'science', 'plant', 'cell', 'biology', 'cycle']):
+            scenes = [
+                {
+                    "id": "scene_01",
+                    "type": "title_card",
+                    "heading": f"Introduction to {topic}",
+                    "subtitle": f"Key mechanisms for {level} learners",
+                    "key_points": [
+                        "Biological Inputs & Energy capture",
+                        "Chemical transformation steps",
+                        "Vital outputs sustaining life",
+                    ],
+                    "narration": f"Welcome to our study of {topic}. Today we explore the primary biological elements and how energy transforms within living systems.",
+                },
+                {
+                    "id": "scene_02",
+                    "type": "diagram",
+                    "heading": "Biological Process & Key Components",
+                    "diagram_type": "science_diagram",
+                    "science_diagram": {
+                        "subject": topic.title(),
+                        "elements": [
+                            {"name": "Sunlight (Photons)", "role": "Excites chlorophyll electrons", "x": 20, "y": 25},
+                            {"name": "Water (H2O)", "role": "Splits via photolysis releasing O2", "x": 20, "y": 70},
+                            {"name": "Chloroplast Thylakoid", "role": "Converts light into ATP & NADPH", "x": 50, "y": 48},
+                            {"name": "Carbon Dioxide (CO2)", "role": "Calvin Cycle fixation in stroma", "x": 80, "y": 25},
+                            {"name": "Glucose (C6H12O6)", "role": "Stores synthesized chemical energy", "x": 80, "y": 70},
+                        ],
+                        "process_flow": [
+                            "Photons absorbed by Chlorophyll",
+                            "Water split releasing Oxygen",
+                            "ATP and NADPH created in light reactions",
+                            "Carbon fixation yields Glucose in Calvin Cycle",
+                        ],
+                    },
+                    "items": [
+                        "Light Absorption",
+                        "Photolysis",
+                        "Electron Transport",
+                        "Calvin Cycle",
+                    ],
+                    "layout": "horizontal",
+                    "narration": "In photosynthesis, light energy and water initiate electron transport in the thylakoid, ultimately producing glucose and releasing vital oxygen.",
+                },
+                {
+                    "id": "scene_03",
+                    "type": "code_walkthrough",
+                    "heading": "Chemical Equation & Stoichiometry",
+                    "code": "# Photosynthesis stoichiometric balance\n# 6 CO2 + 6 H2O + Light Energy -> C6H12O6 + 6 O2\ninputs = {'CO2': 6, 'H2O': 6}\noutputs = {'Glucose': 1, 'O2': 6}\nprint('Balanced equation:', inputs, '->', outputs)",
+                    "code_language": "python",
+                    "highlight_lines": [2, 3, 4],
+                    "expected_output": "Balanced equation: {'CO2': 6, 'H2O': 6} -> {'Glucose': 1, 'O2': 6}",
+                    "narration": "Stoichiometrically, six molecules of carbon dioxide and six molecules of water yield one molecule of glucose and six molecules of oxygen.",
+                },
+            ]
+        elif any(k in topic_lower for k in ['number', 'integer', 'fraction', 'addition', 'subtraction']):
+            scenes = [
+                {
+                    "id": "scene_01",
+                    "type": "title_card",
+                    "heading": f"Introduction to {topic}",
+                    "subtitle": f"Visualizing values on a number line",
+                    "key_points": [
+                        "Understanding origin and orientation",
+                        "Visualizing increments and distances",
+                        "Tracking operations with interval jumps",
+                    ],
+                    "narration": f"Welcome to our lesson on {topic}. Number lines provide an intuitive geometric representation of numbers and relationships.",
+                },
+                {
+                    "id": "scene_02",
+                    "type": "diagram",
+                    "heading": "Values on the Number Line",
+                    "diagram_type": "number_line",
+                    "number_line": {
+                        "min_val": 0.0,
+                        "max_val": 10.0,
+                        "step": 1.0,
+                        "points": [
+                            {"val": 2.0, "label": "Start: 2", "color": "#38BDF8"},
+                            {"val": 7.0, "label": "Target: 7", "color": "#10B981"},
+                        ],
+                        "highlight_interval": [2.0, 7.0],
+                    },
+                    "fraction_bar": {
+                        "total_units": 10.0,
+                        "segments": [
+                            {"label": "Passed", "units": 5.0, "color": "#38BDF8", "fraction_text": "5/10"},
+                            {"label": "Remaining", "units": 5.0, "color": "#94A3B8", "fraction_text": "5/10"},
+                        ],
+                        "comparison_label": "Jump distance = 5 units (50% of range)",
+                    },
+                    "items": ["Origin (0)", "Start Point (2)", "Interval Jump (+5)", "End Point (7)"],
+                    "layout": "horizontal",
+                    "narration": "Moving along the number line from 2 to 7 represents an interval jump of five positive units.",
+                },
+                {
+                    "id": "scene_03",
+                    "type": "code_walkthrough",
+                    "heading": "Calculating Coordinate Distances",
+                    "code": "# Python: Distance between points on a number line\nstart, target = 2, 7\ndistance = abs(target - start)\nprint(f'Interval distance: {distance}')",
+                    "code_language": "python",
+                    "highlight_lines": [2, 3],
+                    "expected_output": "Interval distance: 5",
+                    "narration": "We calculate the distance between coordinates by taking the absolute value of their difference.",
                 },
             ]
         else:

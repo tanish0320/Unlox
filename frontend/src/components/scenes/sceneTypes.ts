@@ -1,4 +1,4 @@
-﻿export type SceneType =
+export type SceneType =
   | "title_card"
   | "diagram"
   | "code_walkthrough";
@@ -39,7 +39,52 @@ export interface DiagramItem {
   detail?: string;
 }
 
+export interface NumberLineSpec {
+  min_val: number;
+  max_val: number;
+  step?: number;
+  marked_points?: Array<{ value: number; label: string; color?: string }>;
+  highlight_range?: [number, number];
+}
+
+export interface FractionBarSegment {
+  label: string;
+  units: number;
+  color?: string;
+  fraction_text?: string;
+}
+
+export interface FractionBarSpec {
+  total_units: number;
+  segments: FractionBarSegment[];
+  comparison_label?: string;
+}
+
+export interface ProportionTableSpec {
+  headers: string[];
+  rows: Array<{ values: number[] }>;
+  scale_factor_label?: string;
+}
+
+export interface ScienceElement {
+  name: string;
+  role?: string;
+  x: number;
+  y: number;
+}
+
+export interface ScienceDiagramSpec {
+  subject: string;
+  elements: ScienceElement[];
+  process_flow?: string[];
+}
+
 export interface DiagramScene extends BaseScene {
+  diagram_type?: "flowchart" | "number_line" | "fraction_bar" | "proportion_table" | "science_diagram";
+  number_line?: NumberLineSpec;
+  fraction_bar?: FractionBarSpec;
+  proportion_table?: ProportionTableSpec;
+  science_diagram?: ScienceDiagramSpec;
   type: "diagram";
   nodes?: DiagramNode[];
   edges?: DiagramEdge[];

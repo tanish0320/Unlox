@@ -1,5 +1,9 @@
 import React, { useMemo } from "react";
 import { DiagramSceneProps, DiagramNode, DiagramEdge } from "./sceneTypes";
+import { FractionBar } from "./FractionBar";
+import { NumberLine } from "./NumberLine";
+import { ProportionTable } from "./ProportionTable";
+import { ScienceDiagram } from "./ScienceDiagram";
 import {
   normalizedProgress,
   staggeredProgress,
@@ -186,7 +190,15 @@ export const DiagramSceneComponent: React.FC<DiagramSceneProps> = ({
       </div>
 
       <div className="blu-diagram-container">
-        {layout.nodes.length === 0 ? (
+        {scene.diagram_type === "fraction_bar" && scene.fraction_bar ? (
+          <FractionBar spec={scene.fraction_bar} progress={progress} heading={scene.heading} />
+        ) : scene.diagram_type === "number_line" && scene.number_line ? (
+          <NumberLine spec={scene.number_line} progress={progress} heading={scene.heading} />
+        ) : scene.diagram_type === "proportion_table" && scene.proportion_table ? (
+          <ProportionTable spec={scene.proportion_table} progress={progress} heading={scene.heading} />
+        ) : scene.diagram_type === "science_diagram" && scene.science_diagram ? (
+          <ScienceDiagram spec={scene.science_diagram} progress={progress} heading={scene.heading} />
+        ) : layout.nodes.length === 0 ? (
           <div style={{ color: "var(--blu-muted)", fontSize: 18 }}>
             No diagram nodes provided.
           </div>

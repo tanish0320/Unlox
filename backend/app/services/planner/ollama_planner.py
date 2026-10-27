@@ -28,6 +28,7 @@ RULES:
 4. In 'code_walkthrough', 'highlight_lines' must be 1-indexed and within the total lines of 'code'.
 5. Narration must be natural, engaging spoken teaching text.
 6. Return JSON ONLY. Do not execute or request execution of code.
+7. In 'diagram' scenes, optionally provide 'diagram_type' ('flowchart', 'number_line', 'fraction_bar', 'proportion_table', 'science_diagram') with relevant spec objects.
 """
 
 

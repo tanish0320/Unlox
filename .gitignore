@@ -18,6 +18,8 @@ ENV/
 # Temporary test audio
 test_*.wav
 *.onnx
+*.bin
+scratch/
 outputs/audio/
 outputs/test_run/
 outputs/generated/

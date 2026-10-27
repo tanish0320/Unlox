@@ -253,6 +253,95 @@ class WindowsLocalTTSAdapter(BaseTTSAdapter):
         return entry, False
 
 
+class KokoroTTSAdapter(BaseTTSAdapter):
+    """
+    Offline local neural speech synthesizer using Kokoro-82M ONNX models.
+    Supports high-fidelity English personas: af_heart, af_bella, am_adam, am_michael, bf_emma, bm_george.
+    """
+
+    SUPPORTED_PERSONAS = [
+        ("af_heart", "Heart (US Female, Soft)"),
+        ("af_bella", "Bella (US Female, Expressive)"),
+        ("am_adam", "Adam (US Male, Clear)"),
+        ("am_michael", "Michael (US Male, Warm)"),
+        ("bf_emma", "Emma (UK Female, Academic)"),
+        ("bm_george", "George (UK Male, Professional)"),
+    ]
+
+    def __init__(self, voices_dir: Optional[Path] = None):
+        self.voices_dir = voices_dir or (Path(__file__).resolve().parent / "voices" / "kokoro")
+        self._kokoro_instance = None
+        self.default_voice = "af_heart"
+
+    def _get_model_paths(self) -> Tuple[Optional[Path], Optional[Path]]:
+        model_path = self.voices_dir / "kokoro-v1.0.onnx"
+        voices_path = self.voices_dir / "voices-v1.0.bin"
+        if model_path.is_file() and voices_path.is_file():
+            return model_path, voices_path
+        return None, None
+
+    def is_available(self) -> bool:
+        m, v = self._get_model_paths()
+        return m is not None and v is not None
+
+    def is_language_supported(self, language: str) -> bool:
+        lang = language.lower().replace("-", "_").split("_")[0]
+        return lang in ("en", "eng") and self.is_available()
+
+    def _get_engine(self):
+        if self._kokoro_instance is not None:
+            return self._kokoro_instance
+        m, v = self._get_model_paths()
+        if not m or not v:
+            raise MissingLocalVoiceError(f"Kokoro-82M model files not found in {self.voices_dir}")
+        from kokoro_onnx import Kokoro
+        self._kokoro_instance = Kokoro(str(m), str(v))
+        return self._kokoro_instance
+
+    def synthesize_scene(
+        self,
+        scene_id: str,
+        text: str,
+        language: str,
+        output_path: Path,
+        voice_id: Optional[str] = None,
+    ) -> Tuple[SceneAudioEntry, bool]:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        import soundfile as sf
+        engine = self._get_engine()
+
+        voice_name = voice_id or self.default_voice
+        if voice_name.startswith("kokoro_"):
+            voice_name = voice_name.replace("kokoro_", "")
+
+        available_voices = engine.get_voices()
+        if voice_name not in available_voices:
+            voice_name = "af_heart" if "af_heart" in available_voices else available_voices[0]
+
+        samples, sample_rate = engine.create(text=text, voice=voice_name, speed=1.0, lang="en-us")
+        sf.write(str(output_path), samples, sample_rate)
+
+        duration = measure_wav_duration(output_path)
+
+        entry = SceneAudioEntry(
+            scene_id=scene_id,
+            audio_file=str(output_path.as_posix()),
+            duration_seconds=duration,
+            language=language,
+            voice_id=f"kokoro_{voice_name}",
+            sample_rate=sample_rate,
+            fallback_used=False,
+            caption_segments=[
+                CaptionSegment(
+                    start_seconds=0.0,
+                    end_seconds=duration,
+                    text=text,
+                )
+            ],
+        )
+        return entry, False
+
+
 class MockTTSAdapter(BaseTTSAdapter):
     """
     Deterministic PCM WAV generator strictly for isolated benchmark tests.
@@ -336,6 +425,7 @@ class LocalTTSDispatcher:
         self.allow_mock = allow_mock
 
         self.neural_adapter = LocalNeuralTTSAdapter()
+        self.kokoro_adapter = KokoroTTSAdapter()
         self.windows_adapter = WindowsLocalTTSAdapter()
         self.mock_adapter = MockTTSAdapter()
 
@@ -359,6 +449,23 @@ class LocalTTSDispatcher:
                     "available": True,
                     "engine": "Local Neural (Piper ONNX)",
                     "voice_id": model_name,
+                }
+            elif lang == "en":
+                kokoro_avail = self.kokoro_adapter.is_available()
+                voices["en"] = {
+                    "language": "en",
+                    "language_name": "English",
+                    "available": True,
+                    "engine": "Kokoro-82M Neural / Windows SAPI5",
+                    "voice_id": "kokoro_af_heart" if kokoro_avail else "win_sapi5_David",
+                    "personas": [
+                        {"id": "kokoro_af_heart", "name": "Kokoro: Heart (US Female, Soft)", "engine": "kokoro", "available": kokoro_avail},
+                        {"id": "kokoro_af_bella", "name": "Kokoro: Bella (US Female, Expressive)", "engine": "kokoro", "available": kokoro_avail},
+                        {"id": "kokoro_am_adam", "name": "Kokoro: Adam (US Male, Clear)", "engine": "kokoro", "available": kokoro_avail},
+                        {"id": "kokoro_bf_emma", "name": "Kokoro: Emma (UK Female, Academic)", "engine": "kokoro", "available": kokoro_avail},
+                        {"id": "win_sapi5_David", "name": "Windows SAPI5: David (US Male)", "engine": "windows_sapi5", "available": True},
+                        {"id": "win_sapi5_Zira", "name": "Windows SAPI5: Zira (US Female)", "engine": "windows_sapi5", "available": True},
+                    ]
                 }
             elif self.windows_adapter.is_language_supported(lang):
                 voices[lang] = {
@@ -393,10 +500,23 @@ class LocalTTSDispatcher:
         )
 
     def synthesize_scene(
-        self, scene_id: str, text: str, language: str
+        self, scene_id: str, text: str, language: str, voice_id: Optional[str] = None
     ) -> Tuple[SceneAudioEntry, bool]:
         out_file = self.output_dir / f"{scene_id}_{language}.wav"
         lang = language.lower().replace("-", "_").split("_")[0]
+
+        # 0. Dispatch to Kokoro Neural Engine for English when requested or available
+        if (voice_id and voice_id.startswith("kokoro")) or (
+            lang in ("en", "eng")
+            and self.kokoro_adapter.is_available()
+            and not (voice_id and "sapi5" in voice_id.lower())
+        ):
+            try:
+                return self.kokoro_adapter.synthesize_scene(
+                    scene_id=scene_id, text=text, language=language, output_path=out_file, voice_id=voice_id
+                )
+            except Exception as kokoro_err:
+                print(f"Kokoro synthesis failed ({kokoro_err}), attempting system SAPI5 fallback")
 
         # 1. Dispatch to Neural TTS (Piper) for verified native neural speech (Hindi, Telugu, etc.)
         if self.neural_adapter.is_language_supported(lang):
@@ -431,16 +551,24 @@ class LocalTTSDispatcher:
         )
 
     def synthesize(
-        self, text: str, language: str, scene_id: str = "temp", output_path: Optional[Path] = None
+        self, text: str, language: str, scene_id: str = "temp", output_path: Optional[Path] = None, voice_id: Optional[str] = None
     ) -> SceneAudioEntry:
         """Direct synthesis helper returning SceneAudioEntry."""
         if output_path is None:
             output_path = self.output_dir / f"{scene_id}_{language}.wav"
-        return self.synthesize_speech(text=text, language=language, output_path=output_path)
+        return self.synthesize_speech(text=text, language=language, output_path=output_path, voice_id=voice_id)
 
     def synthesize_speech(
-        self, text: str, language: str, output_path: Path
+        self, text: str, language: str, output_path: Path, voice_id: Optional[str] = None
     ) -> SceneAudioEntry:
+        """Helper allowing direct text synthesis into a specific output path."""
+        scene_id = output_path.stem
+        entry, _ = self.synthesize_scene(scene_id=scene_id, text=text, language=language, voice_id=voice_id)
+        if Path(entry.audio_file) != output_path and Path(entry.audio_file).exists():
+            import shutil
+            shutil.copyfile(entry.audio_file, output_path)
+            entry.audio_file = str(output_path.as_posix())
+        return entry
         """Helper allowing direct text synthesis into a specific output path."""
         scene_id = output_path.stem
         entry, _ = self.synthesize_scene(scene_id=scene_id, text=text, language=language)
