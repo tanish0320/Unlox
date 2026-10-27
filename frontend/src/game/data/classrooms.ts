@@ -17,7 +17,7 @@ export const TEACHERS: Record<string, TeacherDef> = {
       "Understanding prime numbers",
       "What is probability?",
     ],
-    position: { x: 10, y: 4 },
+    position: { x: 9.5, y: 3.5 },
     direction: "down",
   },
   cs: {
@@ -36,7 +36,7 @@ export const TEACHERS: Record<string, TeacherDef> = {
       "How does a web page load?",
       "What is an if statement?",
     ],
-    position: { x: 10, y: 4 },
+    position: { x: 9.5, y: 3.5 },
     direction: "down",
   },
   physics: {
@@ -55,7 +55,7 @@ export const TEACHERS: Record<string, TeacherDef> = {
       "How do lenses bend light?",
       "How does electricity flow in a circuit?",
     ],
-    position: { x: 10, y: 4 },
+    position: { x: 9.5, y: 3.5 },
     direction: "down",
   },
   chemistry: {
@@ -74,8 +74,8 @@ export const TEACHERS: Record<string, TeacherDef> = {
       "Understanding the Periodic Table",
       "Acids and bases: pH balance explained",
     ],
-    position: { x: 10, y: 4 },
-    direction: "down",
+    position: { x: 9.5, y: 6.5 },
+    direction: "up",
   },
   biology: {
     id: "teacher-flora",
@@ -93,8 +93,8 @@ export const TEACHERS: Record<string, TeacherDef> = {
       "What are cells and organelles?",
       "How do forest ecosystems balance food webs?",
     ],
-    position: { x: 10, y: 4 },
-    direction: "down",
+    position: { x: 9.5, y: 6.5 },
+    direction: "up",
   },
   social: {
     id: "teacher-atlas",
@@ -112,8 +112,8 @@ export const TEACHERS: Record<string, TeacherDef> = {
       "How maps and compasses work",
       "Understanding ancient river valley civilizations",
     ],
-    position: { x: 10, y: 4 },
-    direction: "down",
+    position: { x: 9.5, y: 6.5 },
+    direction: "up",
   },
 };
 
@@ -130,48 +130,69 @@ export const CLASSROOMS: Record<string, ClassroomDef> = {
     floorTheme: "tile_check",
     accentColor: "#234E3C",
     walls: [
-      { x: 0, y: 0, width: 26, height: 2 }, // Top exterior wall
-      { x: 0, y: 0, width: 1, height: 18 }, // Left wall
-      { x: 25, y: 0, width: 1, height: 18 }, // Right wall
-      { x: 0, y: 17, width: 26, height: 1 }, // Bottom exterior wall
+      // Top ceiling
+      { x: 0, y: 0, width: 26, height: 1 },
+      // Top wall at y=1 with 3 doorway openings:
+      // Door 1 (Maths) at x: 3, 4
+      // Door 2 (CS) at x: 12, 13
+      // Door 3 (Physics) at x: 21, 22
+      { x: 0, y: 1, width: 3, height: 1 },
+      { x: 5, y: 1, width: 7, height: 1 },
+      { x: 14, y: 1, width: 7, height: 1 },
+      { x: 23, y: 1, width: 3, height: 1 },
+
+      // Left & right outer perimeter
+      { x: 0, y: 0, width: 1, height: 18 },
+      { x: 25, y: 0, width: 1, height: 18 },
+
+      // Bottom base wall at y=17
+      { x: 0, y: 17, width: 26, height: 1 },
+      // Bottom wall at y=16 with 3 doorway openings:
+      // Door 4 (Chemistry) at x: 3, 4
+      // Door 5 (Biology) at x: 12, 13
+      // Door 6 (Social) at x: 21, 22
+      { x: 0, y: 16, width: 3, height: 1 },
+      { x: 5, y: 16, width: 7, height: 1 },
+      { x: 14, y: 16, width: 7, height: 1 },
+      { x: 23, y: 16, width: 3, height: 1 },
     ],
     doors: [
       // Top row doors (North wings)
       {
         targetRoom: "maths",
-        targetPosition: { x: 10, y: 11 },
-        triggerArea: { x: 3, y: 1, width: 2, height: 1 },
+        targetPosition: { x: 9.5, y: 11.0 },
+        triggerArea: { x: 3, y: 0.6, width: 2, height: 1.0 },
         label: "Maths Tower [Ms. Asha]",
       },
       {
         targetRoom: "cs",
-        targetPosition: { x: 10, y: 11 },
-        triggerArea: { x: 12, y: 1, width: 2, height: 1 },
+        targetPosition: { x: 9.5, y: 11.0 },
+        triggerArea: { x: 12, y: 0.6, width: 2, height: 1.0 },
         label: "CS Lab [Prof. Byte]",
       },
       {
         targetRoom: "physics",
-        targetPosition: { x: 10, y: 11 },
-        triggerArea: { x: 21, y: 1, width: 2, height: 1 },
+        targetPosition: { x: 9.5, y: 11.0 },
+        triggerArea: { x: 21, y: 0.6, width: 2, height: 1.0 },
         label: "Physics Observatory [Dr. Newton]",
       },
       // Bottom row doors (South wings)
       {
         targetRoom: "chemistry",
-        targetPosition: { x: 10, y: 2 },
-        triggerArea: { x: 3, y: 16, width: 2, height: 1 },
+        targetPosition: { x: 9.5, y: 2.2 },
+        triggerArea: { x: 3, y: 15.8, width: 2, height: 1.0 },
         label: "Chemistry Lab [Dr. Mira]",
       },
       {
         targetRoom: "biology",
-        targetPosition: { x: 10, y: 2 },
-        triggerArea: { x: 12, y: 16, width: 2, height: 1 },
+        targetPosition: { x: 9.5, y: 2.2 },
+        triggerArea: { x: 12, y: 15.8, width: 2, height: 1.0 },
         label: "Biology Greenhouse [Ms. Flora]",
       },
       {
         targetRoom: "social",
-        targetPosition: { x: 10, y: 2 },
-        triggerArea: { x: 21, y: 16, width: 2, height: 1 },
+        targetPosition: { x: 9.5, y: 2.2 },
+        triggerArea: { x: 21, y: 15.8, width: 2, height: 1.0 },
         label: "Social Sciences [Mr. Atlas]",
       },
     ],
@@ -184,7 +205,7 @@ export const CLASSROOMS: Record<string, ClassroomDef> = {
       { id: "c-plant-2", x: 24, y: 2, width: 1, height: 1, type: "plant" },
       { id: "c-plant-3", x: 1, y: 15, width: 1, height: 1, type: "plant" },
       { id: "c-plant-4", x: 24, y: 15, width: 1, height: 1, type: "plant" },
-      // Benches for students in hallway
+      // Benches for students in hallway (chairs are walkable)
       { id: "c-bench-1", x: 7, y: 9, width: 2, height: 1, type: "chair", label: "Study Bench" },
       { id: "c-bench-2", x: 17, y: 9, width: 2, height: 1, type: "chair", label: "Study Bench" },
     ],
@@ -207,28 +228,28 @@ export const CLASSROOMS: Record<string, ClassroomDef> = {
       { x: 0, y: 0, width: 20, height: 2 },
       { x: 0, y: 0, width: 1, height: 14 },
       { x: 19, y: 0, width: 1, height: 14 },
-      { x: 0, y: 13, width: 20, height: 1 },
+      // Bottom wall with doorway opening at x: 9, 10
+      { x: 0, y: 13, width: 9, height: 1 },
+      { x: 11, y: 13, width: 9, height: 1 },
     ],
     doors: [
       {
         targetRoom: "corridor",
-        targetPosition: { x: 4, y: 3 },
-        triggerArea: { x: 9, y: 13, width: 2, height: 1 },
+        targetPosition: { x: 3.5, y: 2.4 },
+        triggerArea: { x: 9, y: 12.6, width: 2, height: 1.2 },
         label: "Exit to Grand Hallway",
       },
     ],
     furniture: [
       { id: "m-board", x: 7, y: 1, width: 6, height: 1, type: "chalkboard", label: "a² + b² = c² | π ≈ 3.14159" },
-      { id: "m-t-desk", x: 9, y: 5, width: 2, height: 1, type: "desk", label: "Ms. Asha's Desk" },
+      { id: "m-t-desk", x: 8.5, y: 4.5, width: 3, height: 1, type: "desk", label: "Ms. Asha's Desk" },
       { id: "m-book-1", x: 1, y: 2, width: 2, height: 2, type: "bookshelf", label: "Calculus & Geometry" },
       { id: "m-book-2", x: 17, y: 2, width: 2, height: 2, type: "bookshelf", label: "Number Theory" },
-      // Student desks (2 rows of 3)
-      { id: "m-s-desk-1", x: 4, y: 8, width: 2, height: 1, type: "desk" },
-      { id: "m-s-desk-2", x: 9, y: 8, width: 2, height: 1, type: "desk" },
-      { id: "m-s-desk-3", x: 14, y: 8, width: 2, height: 1, type: "desk" },
-      { id: "m-s-desk-4", x: 4, y: 10, width: 2, height: 1, type: "desk" },
-      { id: "m-s-desk-5", x: 9, y: 10, width: 2, height: 1, type: "desk" },
-      { id: "m-s-desk-6", x: 14, y: 10, width: 2, height: 1, type: "desk" },
+      // Student desks on left and right wings (clear central aisle!)
+      { id: "m-s-desk-1", x: 3, y: 7, width: 2, height: 1, type: "desk" },
+      { id: "m-s-desk-2", x: 3, y: 9, width: 2, height: 1, type: "desk" },
+      { id: "m-s-desk-3", x: 15, y: 7, width: 2, height: 1, type: "desk" },
+      { id: "m-s-desk-4", x: 15, y: 9, width: 2, height: 1, type: "desk" },
       { id: "m-plant", x: 18, y: 12, width: 1, height: 1, type: "plant" },
     ],
   },
@@ -250,28 +271,28 @@ export const CLASSROOMS: Record<string, ClassroomDef> = {
       { x: 0, y: 0, width: 20, height: 2 },
       { x: 0, y: 0, width: 1, height: 14 },
       { x: 19, y: 0, width: 1, height: 14 },
-      { x: 0, y: 13, width: 20, height: 1 },
+      // Bottom wall with doorway opening at x: 9, 10
+      { x: 0, y: 13, width: 9, height: 1 },
+      { x: 11, y: 13, width: 9, height: 1 },
     ],
     doors: [
       {
         targetRoom: "corridor",
-        targetPosition: { x: 13, y: 3 },
-        triggerArea: { x: 9, y: 13, width: 2, height: 1 },
+        targetPosition: { x: 12.5, y: 2.4 },
+        triggerArea: { x: 9, y: 12.6, width: 2, height: 1.2 },
         label: "Exit to Grand Hallway",
       },
     ],
     furniture: [
       { id: "cs-board", x: 7, y: 1, width: 6, height: 1, type: "chalkboard", label: "for i in range(n): print(i)" },
-      { id: "cs-t-desk", x: 9, y: 5, width: 2, height: 1, type: "computer", label: "Prof. Byte's Terminal" },
+      { id: "cs-t-desk", x: 8.5, y: 4.5, width: 3, height: 1, type: "computer", label: "Prof. Byte's Terminal" },
       { id: "cs-server-1", x: 1, y: 2, width: 2, height: 2, type: "cabinet", label: "Compute Cluster 01" },
       { id: "cs-server-2", x: 17, y: 2, width: 2, height: 2, type: "cabinet", label: "Storage Node 02" },
-      // Workstations
-      { id: "cs-pc-1", x: 4, y: 8, width: 2, height: 1, type: "computer", label: "Workstation A" },
-      { id: "cs-pc-2", x: 9, y: 8, width: 2, height: 1, type: "computer", label: "Workstation B" },
-      { id: "cs-pc-3", x: 14, y: 8, width: 2, height: 1, type: "computer", label: "Workstation C" },
-      { id: "cs-pc-4", x: 4, y: 10, width: 2, height: 1, type: "computer", label: "Workstation D" },
-      { id: "cs-pc-5", x: 9, y: 10, width: 2, height: 1, type: "computer", label: "Workstation E" },
-      { id: "cs-pc-6", x: 14, y: 10, width: 2, height: 1, type: "computer", label: "Workstation F" },
+      // Workstations on left and right wings
+      { id: "cs-pc-1", x: 3, y: 7, width: 2, height: 1, type: "computer", label: "Workstation A" },
+      { id: "cs-pc-2", x: 3, y: 9, width: 2, height: 1, type: "computer", label: "Workstation B" },
+      { id: "cs-pc-3", x: 15, y: 7, width: 2, height: 1, type: "computer", label: "Workstation C" },
+      { id: "cs-pc-4", x: 15, y: 9, width: 2, height: 1, type: "computer", label: "Workstation D" },
       { id: "cs-plant", x: 1, y: 12, width: 1, height: 1, type: "plant" },
     ],
   },
@@ -293,26 +314,28 @@ export const CLASSROOMS: Record<string, ClassroomDef> = {
       { x: 0, y: 0, width: 20, height: 2 },
       { x: 0, y: 0, width: 1, height: 14 },
       { x: 19, y: 0, width: 1, height: 14 },
-      { x: 0, y: 13, width: 20, height: 1 },
+      // Bottom wall with doorway opening at x: 9, 10
+      { x: 0, y: 13, width: 9, height: 1 },
+      { x: 11, y: 13, width: 9, height: 1 },
     ],
     doors: [
       {
         targetRoom: "corridor",
-        targetPosition: { x: 22, y: 3 },
-        triggerArea: { x: 9, y: 13, width: 2, height: 1 },
+        targetPosition: { x: 21.5, y: 2.4 },
+        triggerArea: { x: 9, y: 12.6, width: 2, height: 1.2 },
         label: "Exit to Grand Hallway",
       },
     ],
     furniture: [
       { id: "phy-board", x: 7, y: 1, width: 6, height: 1, type: "chalkboard", label: "F = ma | E = mc²" },
-      { id: "phy-t-desk", x: 9, y: 5, width: 2, height: 1, type: "desk", label: "Dr. Newton's Lab Bench" },
+      { id: "phy-t-desk", x: 8.5, y: 4.5, width: 3, height: 1, type: "desk", label: "Dr. Newton's Lab Bench" },
       { id: "phy-tele-1", x: 2, y: 2, width: 2, height: 2, type: "telescope", label: "Starview Refractor" },
       { id: "phy-book-1", x: 17, y: 2, width: 2, height: 2, type: "bookshelf", label: "Astrophysics Volumes" },
       // Experiment benches
-      { id: "phy-bench-1", x: 4, y: 8, width: 3, height: 1, type: "lab_bench", label: "Optics Prism Table" },
-      { id: "phy-bench-2", x: 13, y: 8, width: 3, height: 1, type: "lab_bench", label: "Pendulum & Motion Stand" },
-      { id: "phy-bench-3", x: 4, y: 10, width: 3, height: 1, type: "lab_bench", label: "Circuit Tester" },
-      { id: "phy-bench-4", x: 13, y: 10, width: 3, height: 1, type: "lab_bench", label: "Magnetic Field Coil" },
+      { id: "phy-bench-1", x: 3, y: 7, width: 3, height: 1, type: "lab_bench", label: "Optics Prism Table" },
+      { id: "phy-bench-2", x: 3, y: 9, width: 3, height: 1, type: "lab_bench", label: "Pendulum Stand" },
+      { id: "phy-bench-3", x: 14, y: 7, width: 3, height: 1, type: "lab_bench", label: "Circuit Tester" },
+      { id: "phy-bench-4", x: 14, y: 9, width: 3, height: 1, type: "lab_bench", label: "Magnetic Coil" },
       { id: "phy-plant", x: 18, y: 12, width: 1, height: 1, type: "plant" },
     ],
   },
@@ -331,7 +354,10 @@ export const CLASSROOMS: Record<string, ClassroomDef> = {
     floorTheme: "tile_check",
     accentColor: "#059669",
     walls: [
-      { x: 0, y: 0, width: 20, height: 2 },
+      { x: 0, y: 0, width: 20, height: 1 }, // top ceiling
+      // top wall at y=1 with doorway opening at x: 9, 10
+      { x: 0, y: 1, width: 9, height: 1 },
+      { x: 11, y: 1, width: 9, height: 1 },
       { x: 0, y: 0, width: 1, height: 14 },
       { x: 19, y: 0, width: 1, height: 14 },
       { x: 0, y: 13, width: 20, height: 1 },
@@ -339,21 +365,21 @@ export const CLASSROOMS: Record<string, ClassroomDef> = {
     doors: [
       {
         targetRoom: "corridor",
-        targetPosition: { x: 4, y: 15 },
-        triggerArea: { x: 9, y: 1, width: 2, height: 1 },
+        targetPosition: { x: 3.5, y: 14.8 },
+        triggerArea: { x: 9, y: 0.5, width: 2, height: 1.0 },
         label: "Exit to Grand Hallway",
       },
     ],
     furniture: [
       { id: "ch-board", x: 7, y: 12, width: 6, height: 1, type: "chalkboard", label: "2H₂ + O₂ -> 2H₂O + Energy" },
-      { id: "ch-t-desk", x: 9, y: 5, width: 2, height: 1, type: "lab_bench", label: "Dr. Mira's Workstation" },
+      { id: "ch-t-desk", x: 8.5, y: 5.5, width: 3, height: 1, type: "lab_bench", label: "Dr. Mira's Workstation" },
       { id: "ch-cabinet-1", x: 1, y: 2, width: 2, height: 2, type: "cabinet", label: "Reagents & Glassware" },
       { id: "ch-cabinet-2", x: 17, y: 2, width: 2, height: 2, type: "cabinet", label: "Chemical Reagents" },
       // Wet lab benches
-      { id: "ch-bench-1", x: 4, y: 8, width: 3, height: 1, type: "lab_bench", label: "Distillation Station" },
-      { id: "ch-bench-2", x: 13, y: 8, width: 3, height: 1, type: "lab_bench", label: "Titration Bench" },
-      { id: "ch-bench-3", x: 4, y: 10, width: 3, height: 1, type: "lab_bench", label: "Centrifuge & Scales" },
-      { id: "ch-bench-4", x: 13, y: 10, width: 3, height: 1, type: "lab_bench", label: "pH Analysis Station" },
+      { id: "ch-bench-1", x: 3, y: 8, width: 3, height: 1, type: "lab_bench", label: "Distillation Station" },
+      { id: "ch-bench-2", x: 3, y: 10, width: 3, height: 1, type: "lab_bench", label: "Titration Bench" },
+      { id: "ch-bench-3", x: 14, y: 8, width: 3, height: 1, type: "lab_bench", label: "Centrifuge & Scales" },
+      { id: "ch-bench-4", x: 14, y: 10, width: 3, height: 1, type: "lab_bench", label: "pH Analysis Station" },
       { id: "ch-plant", x: 1, y: 11, width: 1, height: 1, type: "plant" },
     ],
   },
@@ -372,7 +398,10 @@ export const CLASSROOMS: Record<string, ClassroomDef> = {
     floorTheme: "wood",
     accentColor: "#16A34A",
     walls: [
-      { x: 0, y: 0, width: 20, height: 2 },
+      { x: 0, y: 0, width: 20, height: 1 },
+      // top wall at y=1 with doorway opening at x: 9, 10
+      { x: 0, y: 1, width: 9, height: 1 },
+      { x: 11, y: 1, width: 9, height: 1 },
       { x: 0, y: 0, width: 1, height: 14 },
       { x: 19, y: 0, width: 1, height: 14 },
       { x: 0, y: 13, width: 20, height: 1 },
@@ -380,21 +409,21 @@ export const CLASSROOMS: Record<string, ClassroomDef> = {
     doors: [
       {
         targetRoom: "corridor",
-        targetPosition: { x: 13, y: 15 },
-        triggerArea: { x: 9, y: 1, width: 2, height: 1 },
+        targetPosition: { x: 12.5, y: 14.8 },
+        triggerArea: { x: 9, y: 0.5, width: 2, height: 1.0 },
         label: "Exit to Grand Hallway",
       },
     ],
     furniture: [
       { id: "bio-board", x: 7, y: 12, width: 6, height: 1, type: "chalkboard", label: "6CO₂ + 6H₂O -> C₆H₁₂O₆ + 6O₂" },
-      { id: "bio-t-desk", x: 9, y: 5, width: 2, height: 1, type: "desk", label: "Ms. Flora's Herbarium Bench" },
-      // Abundant plants and terrariums
+      { id: "bio-t-desk", x: 8.5, y: 5.5, width: 3, height: 1, type: "desk", label: "Ms. Flora's Herbarium Bench" },
+      // Plants & terrariums
       { id: "bio-plant-1", x: 1, y: 2, width: 2, height: 2, type: "plant", label: "Fern Sanctuary" },
       { id: "bio-plant-2", x: 17, y: 2, width: 2, height: 2, type: "plant", label: "Medicinal Herbs" },
-      { id: "bio-bench-1", x: 4, y: 8, width: 3, height: 1, type: "lab_bench", label: "Microscope Station" },
-      { id: "bio-bench-2", x: 13, y: 8, width: 3, height: 1, type: "lab_bench", label: "Specimen Examination" },
-      { id: "bio-bench-3", x: 4, y: 10, width: 3, height: 1, type: "lab_bench", label: "Seedling Nursery" },
-      { id: "bio-bench-4", x: 13, y: 10, width: 3, height: 1, type: "lab_bench", label: "Cell Modeling Table" },
+      { id: "bio-bench-1", x: 3, y: 8, width: 3, height: 1, type: "lab_bench", label: "Microscope Station" },
+      { id: "bio-bench-2", x: 3, y: 10, width: 3, height: 1, type: "lab_bench", label: "Seedling Nursery" },
+      { id: "bio-bench-3", x: 14, y: 8, width: 3, height: 1, type: "lab_bench", label: "Specimen Table" },
+      { id: "bio-bench-4", x: 14, y: 10, width: 3, height: 1, type: "lab_bench", label: "Cell Models" },
       { id: "bio-plant-3", x: 18, y: 11, width: 1, height: 1, type: "plant" },
       { id: "bio-plant-4", x: 1, y: 11, width: 1, height: 1, type: "plant" },
     ],
@@ -414,7 +443,10 @@ export const CLASSROOMS: Record<string, ClassroomDef> = {
     floorTheme: "carpet",
     accentColor: "#B45309",
     walls: [
-      { x: 0, y: 0, width: 20, height: 2 },
+      { x: 0, y: 0, width: 20, height: 1 },
+      // top wall at y=1 with doorway opening at x: 9, 10
+      { x: 0, y: 1, width: 9, height: 1 },
+      { x: 11, y: 1, width: 9, height: 1 },
       { x: 0, y: 0, width: 1, height: 14 },
       { x: 19, y: 0, width: 1, height: 14 },
       { x: 0, y: 13, width: 20, height: 1 },
@@ -422,21 +454,21 @@ export const CLASSROOMS: Record<string, ClassroomDef> = {
     doors: [
       {
         targetRoom: "corridor",
-        targetPosition: { x: 22, y: 15 },
-        triggerArea: { x: 9, y: 1, width: 2, height: 1 },
+        targetPosition: { x: 21.5, y: 14.8 },
+        triggerArea: { x: 9, y: 0.5, width: 2, height: 1.0 },
         label: "Exit to Grand Hallway",
       },
     ],
     furniture: [
       { id: "soc-board", x: 7, y: 12, width: 6, height: 1, type: "chalkboard", label: "Global Trade & Human History" },
-      { id: "soc-t-desk", x: 9, y: 5, width: 2, height: 1, type: "desk", label: "Mr. Atlas's Curator Desk" },
+      { id: "soc-t-desk", x: 8.5, y: 5.5, width: 3, height: 1, type: "desk", label: "Mr. Atlas's Curator Desk" },
       { id: "soc-globe-1", x: 2, y: 2, width: 2, height: 2, type: "globe", label: "Ancient Terra Globe" },
       { id: "soc-book-1", x: 17, y: 2, width: 2, height: 2, type: "bookshelf", label: "Historical Archives" },
       // Exhibit display tables
-      { id: "soc-table-1", x: 4, y: 8, width: 3, height: 1, type: "desk", label: "Silk Road Artifacts" },
-      { id: "soc-table-2", x: 13, y: 8, width: 3, height: 1, type: "desk", label: "Maritime Navigation Display" },
-      { id: "soc-table-3", x: 4, y: 10, width: 3, height: 1, type: "desk", label: "Civic Treaties & Scrolls" },
-      { id: "soc-table-4", x: 13, y: 10, width: 3, height: 1, type: "desk", label: "Cartography Collection" },
+      { id: "soc-table-1", x: 3, y: 8, width: 3, height: 1, type: "desk", label: "Silk Road Artifacts" },
+      { id: "soc-table-2", x: 3, y: 10, width: 3, height: 1, type: "desk", label: "Maritime Navigation Display" },
+      { id: "soc-table-3", x: 14, y: 8, width: 3, height: 1, type: "desk", label: "Civic Treaties & Scrolls" },
+      { id: "soc-table-4", x: 14, y: 10, width: 3, height: 1, type: "desk", label: "Cartography Collection" },
       { id: "soc-plant", x: 1, y: 11, width: 1, height: 1, type: "plant" },
     ],
   },

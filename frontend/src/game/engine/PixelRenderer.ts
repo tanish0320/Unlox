@@ -1,4 +1,5 @@
 import { ClassroomDef, Direction, Position, TeacherDef } from "../types";
+import { CollisionSystem } from "./CollisionSystem";
 
 export const TILE_SIZE = 32;
 
@@ -90,7 +91,127 @@ export class PixelRenderer {
       this.drawInteractionPrompt(ctx, room.teacher, rc.animTick);
     }
 
+    // 9. Developer-Only Collision Debug Mode (enabled via ?debugCollisions=1)
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("debugCollisions") === "1") {
+      this.drawCollisionDebug(ctx, rc);
+    }
+
     ctx.restore();
+  }
+
+  // -------------------------------------------------------------
+  // COLLISION & NAVIGATION DEBUG OVERLAY
+  // -------------------------------------------------------------
+  private static drawCollisionDebug(ctx: CanvasRenderingContext2D, rc: RenderContext) {
+    const { room, playerPos } = rc;
+
+    // 1. Draw Wall Collision Rectangles (Red)
+    for (const wall of room.walls) {
+      const wx = wall.x * TILE_SIZE;
+      const wy = wall.y * TILE_SIZE;
+      const ww = wall.width * TILE_SIZE;
+      const wh = wall.height * TILE_SIZE;
+
+      ctx.fillStyle = "rgba(239, 68, 68, 0.4)";
+      ctx.fillRect(wx, wy, ww, wh);
+      ctx.strokeStyle = "#EF4444";
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(wx, wy, ww, wh);
+
+      ctx.fillStyle = "#FEE2E2";
+      ctx.font = "bold 9px monospace";
+      ctx.textAlign = "left";
+      ctx.fillText(`WALL [${wall.width}x${wall.height}]`, wx + 4, wy + 12);
+    }
+
+    // 2. Draw Furniture Colliders (Orange)
+    for (const f of room.furniture) {
+      if (f.type === "chair") continue; // walkable
+      const fx = f.x * TILE_SIZE;
+      const fy = f.y * TILE_SIZE;
+      const fw = f.width * TILE_SIZE;
+      const fh = f.height * TILE_SIZE;
+
+      ctx.fillStyle = "rgba(249, 115, 22, 0.45)";
+      ctx.fillRect(fx, fy, fw, fh);
+      ctx.strokeStyle = "#F97316";
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(fx, fy, fw, fh);
+
+      ctx.fillStyle = "#FFEDD5";
+      ctx.font = "bold 9px monospace";
+      ctx.textAlign = "left";
+      ctx.fillText(`${f.id}`, fx + 4, fy + 12);
+    }
+
+    // 3. Draw Door Transition Zones (Yellow) & Destination Spawns (Cyan)
+    for (const d of room.doors) {
+      const dx = d.triggerArea.x * TILE_SIZE;
+      const dy = d.triggerArea.y * TILE_SIZE;
+      const dw = d.triggerArea.width * TILE_SIZE;
+      const dh = d.triggerArea.height * TILE_SIZE;
+
+      ctx.fillStyle = "rgba(234, 179, 8, 0.5)";
+      ctx.fillRect(dx, dy, dw, dh);
+      ctx.strokeStyle = "#EAB308";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(dx, dy, dw, dh);
+
+      ctx.fillStyle = "#FEF08A";
+      ctx.font = "bold 10px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(`DOOR ➔ ${d.targetRoom}`, dx + dw / 2, dy + dh / 2 + 3);
+
+      // Draw destination spawn marker
+      const sx = d.targetPosition.x * TILE_SIZE;
+      const sy = d.targetPosition.y * TILE_SIZE;
+      ctx.strokeStyle = "#06B6D4";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(sx, sy, TILE_SIZE, TILE_SIZE);
+      ctx.beginPath();
+      ctx.arc(sx + TILE_SIZE / 2, sy + TILE_SIZE / 2, 4, 0, Math.PI * 2);
+      ctx.fillStyle = "#06B6D4";
+      ctx.fill();
+    }
+
+    // 4. Draw Teacher Proximity Zone (Purple)
+    if (room.teacher) {
+      const tx = (room.teacher.position.x + 0.5) * TILE_SIZE;
+      const ty = (room.teacher.position.y + 0.5) * TILE_SIZE;
+      ctx.beginPath();
+      ctx.arc(tx, ty, 2.2 * TILE_SIZE, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(168, 85, 247, 0.15)";
+      ctx.fill();
+      ctx.strokeStyle = "#A855F7";
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = "#E9D5FF";
+      ctx.font = "bold 9px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("INTERACT ZONE (2.2t)", tx, ty - 2.2 * TILE_SIZE - 4);
+    }
+
+    // 5. Draw Player Feet Hitbox (Green / Red if colliding)
+    const pBox = CollisionSystem.getPlayerHitbox(playerPos);
+    const px = pBox.x * TILE_SIZE;
+    const py = pBox.y * TILE_SIZE;
+    const pw = pBox.width * TILE_SIZE;
+    const ph = pBox.height * TILE_SIZE;
+
+    const isColliding = CollisionSystem.isSolid(room, playerPos.x, playerPos.y);
+    ctx.fillStyle = isColliding ? "rgba(239, 68, 68, 0.8)" : "rgba(34, 197, 94, 0.75)";
+    ctx.fillRect(px, py, pw, ph);
+    ctx.strokeStyle = isColliding ? "#EF4444" : "#22C55E";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(px, py, pw, ph);
+
+    ctx.fillStyle = "#FFFFFF";
+    ctx.font = "bold 9px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText(`(${playerPos.x.toFixed(2)}, ${playerPos.y.toFixed(2)})`, px + pw / 2, py - 4);
   }
 
   // -------------------------------------------------------------

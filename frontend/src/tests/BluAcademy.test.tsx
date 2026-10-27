@@ -274,3 +274,114 @@ describe("Blu Academy — Quiz Modal Revision", () => {
     expect(onComplete).toHaveBeenCalledWith(25);
   });
 });
+
+describe("Blu Academy — 6-Classroom Room Transitions & Collision Regression Suite", () => {
+  const roomIds = ["maths", "cs", "physics", "chemistry", "biology", "social"] as const;
+  const corridor = CLASSROOMS.corridor;
+
+  it("ensures hallway has doors for all 6 subjects with walkable destination spawns", () => {
+    expect(corridor.doors.length).toBe(6);
+    const targetRooms = corridor.doors.map((d) => d.targetRoom);
+    expect(targetRooms).toEqual(expect.arrayContaining([...roomIds]));
+
+    for (const door of corridor.doors) {
+      const room = CLASSROOMS[door.targetRoom];
+      expect(room).toBeDefined();
+
+      // Door trigger detection
+      const triggerCenter = {
+        x: door.triggerArea.x + door.triggerArea.width / 2 - 0.5,
+        y: door.triggerArea.y + door.triggerArea.height / 2 - 0.75,
+      };
+      const detected = CollisionSystem.checkDoor(corridor, triggerCenter);
+      expect(detected).not.toBeNull();
+      expect(detected?.targetRoom).toBe(door.targetRoom);
+
+      // Destination spawn must be safely walkable inside destination room
+      const { x, y } = door.targetPosition;
+      expect(CollisionSystem.isSolid(room, x, y)).toBe(false);
+    }
+  });
+
+  it("ensures all 6 classrooms have return doors to corridor with walkable return spawns", () => {
+    for (const roomId of roomIds) {
+      const room = CLASSROOMS[roomId];
+      expect(room.doors.length).toBeGreaterThanOrEqual(1);
+
+      const exitDoor = room.doors.find((d) => d.targetRoom === "corridor");
+      expect(exitDoor).toBeDefined();
+
+      // Check exit trigger detection
+      const triggerCenter = {
+        x: exitDoor!.triggerArea.x + exitDoor!.triggerArea.width / 2 - 0.5,
+        y: exitDoor!.triggerArea.y + exitDoor!.triggerArea.height / 2 - 0.75,
+      };
+      const detected = CollisionSystem.checkDoor(room, triggerCenter);
+      expect(detected).not.toBeNull();
+      expect(detected?.targetRoom).toBe("corridor");
+
+      // Corridor return spawn must be completely walkable
+      const { x, y } = exitDoor!.targetPosition;
+      expect(CollisionSystem.isSolid(corridor, x, y)).toBe(false);
+    }
+  });
+
+  it("ensures destination spawns never trigger doors immediately (prevents bounce loops)", () => {
+    // 1. Spawning inside any classroom from corridor must not be touching the exit door
+    for (const door of corridor.doors) {
+      const room = CLASSROOMS[door.targetRoom];
+      const spawnedDoor = CollisionSystem.checkDoor(room, door.targetPosition);
+      expect(spawnedDoor).toBeNull();
+    }
+
+    // 2. Spawning back in the corridor from any classroom must not be touching a corridor door
+    for (const roomId of roomIds) {
+      const room = CLASSROOMS[roomId];
+      const exitDoor = room.doors.find((d) => d.targetRoom === "corridor")!;
+      const corridorDoor = CollisionSystem.checkDoor(corridor, exitDoor.targetPosition);
+      expect(corridorDoor).toBeNull();
+    }
+  });
+
+  it("ensures doorway openings in corridor walls are physically passable", () => {
+    // Upper doorway openings at y = 1.0 (threshold)
+    expect(CollisionSystem.isSolid(corridor, 3.5, 1.0)).toBe(false); // Maths entrance
+    expect(CollisionSystem.isSolid(corridor, 12.5, 1.0)).toBe(false); // CS entrance
+    expect(CollisionSystem.isSolid(corridor, 21.5, 1.0)).toBe(false); // Physics entrance
+
+    // Lower doorway openings at y = 16.0 (threshold)
+    expect(CollisionSystem.isSolid(corridor, 3.5, 15.6)).toBe(false); // Chemistry entrance
+    expect(CollisionSystem.isSolid(corridor, 12.5, 15.6)).toBe(false); // Biology entrance
+    expect(CollisionSystem.isSolid(corridor, 21.5, 15.6)).toBe(false); // Social entrance
+  });
+
+  it("ensures all 6 teachers are approachable and can be interacted with", () => {
+    for (const roomId of roomIds) {
+      const room = CLASSROOMS[roomId];
+      expect(room.teacher).toBeDefined();
+      const teacher = room.teacher!;
+
+      // Teacher position itself is a solid obstacle (cannot walk through teacher)
+      expect(CollisionSystem.isSolid(room, teacher.position.x, teacher.position.y)).toBe(true);
+
+      // But the speaking spot in front of the teacher's desk is walkable
+      const studentY = teacher.direction === "down" ? teacher.position.y + 2.0 : teacher.position.y - 2.0;
+      expect(CollisionSystem.isSolid(room, teacher.position.x, studentY)).toBe(false);
+
+      // And within proximity for interaction prompt
+      expect(CollisionSystem.isNearTeacher(room, { x: teacher.position.x, y: studentY })).toBe(true);
+    }
+  });
+
+  it("ensures clear central walking aisles in all classrooms", () => {
+    for (const roomId of roomIds) {
+      const room = CLASSROOMS[roomId];
+      // Test 5 sequential aisle points between entrance spawn and teacher
+      const yValues = [7.0, 8.0, 9.0, 10.0];
+      for (const y of yValues) {
+        expect(CollisionSystem.isSolid(room, 9.5, y)).toBe(false);
+      }
+    }
+  });
+});
+

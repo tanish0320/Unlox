@@ -132,13 +132,14 @@ class WindowsLocalTTSAdapter(BaseTTSAdapter):
             raise RuntimeError(f"TTS worker failed: {res.stderr.decode('utf-8', errors='ignore')}")
 
         duration = measure_wav_duration(output_path)
+        clean_vid = voice_id.replace("\\", "/").split("/")[-1]
 
         entry = SceneAudioEntry(
             scene_id=scene_id,
             audio_file=str(output_path.as_posix()),
             duration_seconds=duration,
             language=language,
-            voice_id=f"win_sapi5_{voice_id.split('\\')[-1]}",
+            voice_id=f"win_sapi5_{clean_vid}",
             sample_rate=22050,
             fallback_used=False,
             caption_segments=[

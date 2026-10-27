@@ -1,4 +1,4 @@
-﻿# BLU VISUAL TEACHER — PERSON 4 MASTER INTEGRATION & HANDOFF MANUAL
+# BLU VISUAL TEACHER — PERSON 4 MASTER INTEGRATION & HANDOFF MANUAL
 *Updated for Person 3's Frontend Contract (`timeSeconds`, `durationSeconds`, `text`, `visible`, `notes`)*
 
 ---
@@ -253,3 +253,45 @@ npm run build
 - [x] Code display verified inert (no eval or script execution).
 - [x] Structured study notes display verified for all PRD sections.
 - [x] Zero external network or cloud AI dependencies.
+
+---
+
+## 13. Blu Academy 2D RPG — Navigation, Collision & Room Transition Architecture
+
+### 13.1 Root Cause Analysis of Previous Navigation Bugs
+1. **Upper Doorways Blocked by Solid Corridor Wall**:
+   - The Grand Hallway (`corridor`) defined an unbroken wall `{ x: 0, y: 0, width: 26, height: 2 }` across columns 0–25.
+   - Door triggers were placed at `y = 1`. Because `CollisionSystem.isSolid()` evaluated wall collision before door triggers, the player's collision body hit the solid wall rectangle and could never step onto the door trigger tile.
+   - **Fix**: Cut explicit 2-tile doorway openings in the corridor top wall at `x: [3, 4]`, `[12, 13]`, `[21, 22]` and bottom wall at `x: [3, 4]`, `[12, 13]`, `[21, 22]`.
+2. **Player Stranded / Out-of-Bounds on Room Change**:
+   - `GameCanvas` maintained local `playerPos` in React state without resynchronizing when `currentRoom` changed. Entering a 14-tile-high classroom from `y = 16` in the corridor left the player at `y = 16`, which exceeded `room.gridHeight` and caused `isSolid()` to return `true` unconditionally, locking player movement.
+   - **Fix**: Synchronized `playerPos` and `posRef.current` in `useEffect([currentRoom.id, spawnPosition])` and updated `handleRoomChange` in `BluAcademyView` to pass explicit, safe destination spawn coordinates.
+3. **Classroom Exits Blocked & Transition Bounce Loops**:
+   - Maths, CS, and Physics had solid bottom walls across `y = 13`, and Chemistry, Biology, and Social had solid top walls at `y = 1`. Exit triggers were placed inside solid wall rectangles.
+   - Spawning immediately on or adjacent to a doorway trigger caused reverse transition bouncing without a cooldown buffer.
+   - **Fix**: Split classroom perimeter walls to create clear 2-tile doorway openings, placed exit triggers cleanly inside the threshold, established a 600ms transition cooldown (`transitionCooldownRef`), and positioned return spawns in the corridor comfortably outside the trigger zone (`y = 2.4` for north towers, `y = 14.8` for south wings).
+4. **Collision Box Snapping**:
+   - The collision system used discrete integer rounding `Math.round(x)`, causing jerky snapping near corners and desks.
+   - **Fix**: Implemented a continuous AABB feet collision box (`w: 0.6, h: 0.35, offsetX: 0.2, offsetY: 0.6`) so the player moves smoothly at 4.8 tiles/sec with sub-tile precision and slides naturally through aisles and doorways.
+
+### 13.2 Visual Collision Debug Mode
+- Accessible by appending `?debugCollisions=1` to the URL.
+- Live canvas overlay renders:
+  - **Red rectangles**: Wall collision boxes.
+  - **Orange rectangles**: Solid furniture colliders.
+  - **Yellow rectangles**: Door trigger zones with target room labels.
+  - **Cyan reticles**: Destination spawn positions.
+  - **Purple dashed circles**: Teacher interaction proximity zones (2.2 tiles).
+  - **Green / Red bounding box**: Player feet hitbox (green when walkable, red when colliding) with live coordinates.
+
+### 13.3 Automated Regression Test Suite
+- Comprehensive automated regression tests added to `frontend/src/tests/BluAcademy.test.tsx` verifying:
+  - Hallway has 6 distinct doors connecting to Maths, CS, Physics, Chemistry, Biology, and Social Sciences.
+  - Every classroom has a return door to the corridor.
+  - All destination spawn positions are 100% walkable (`!CollisionSystem.isSolid()`).
+  - Cooldown prevents bounce loops upon spawning.
+  - Doorway openings in corridor and classroom walls are physically passable.
+  - All 6 teachers are approachable and their interaction zones are reachable.
+  - Central walking aisles are open and unobstructed.
+- **Vitest Suite**: 8/8 test files passed, 59/59 tests passed.
+

@@ -27,6 +27,7 @@ export const BluAcademyView: React.FC<BluAcademyViewProps> = ({
   onClearCompletedLesson,
 }) => {
   const [currentRoomId, setCurrentRoomId] = useState<RoomId>("corridor");
+  const [spawnPosition, setSpawnPosition] = useState<Position | undefined>({ x: 13, y: 9 });
   const [activeTeacher, setActiveTeacher] = useState<TeacherDef | null>(null);
   const [showProgressModal, setShowProgressModal] = useState<boolean>(false);
   const [pendingQuiz, setPendingQuiz] = useState<typeof completedLessonInfo | null>(null);
@@ -67,8 +68,17 @@ export const BluAcademyView: React.FC<BluAcademyViewProps> = ({
 
   const currentRoom: ClassroomDef = CLASSROOMS[currentRoomId] || CLASSROOMS.corridor;
 
-  const handleRoomChange = (newRoomId: RoomId) => {
-    setCurrentRoomId(newRoomId);
+  const handleRoomChange = (newRoomId: RoomId, targetSpawnPos?: Position) => {
+    const nextRoom = CLASSROOMS[newRoomId] || CLASSROOMS.corridor;
+    const safeSpawn =
+      targetSpawnPos ||
+      (nextRoom.id === "corridor"
+        ? { x: 13, y: 9 }
+        : ["maths", "cs", "physics"].includes(nextRoom.id)
+        ? { x: 9.5, y: 11.0 }
+        : { x: 9.5, y: 2.2 });
+    setCurrentRoomId(nextRoom.id);
+    setSpawnPosition({ ...safeSpawn });
     setActiveTeacher(null);
   };
 
@@ -89,7 +99,7 @@ export const BluAcademyView: React.FC<BluAcademyViewProps> = ({
       <GameHUD
         currentRoom={currentRoom}
         progress={progress}
-        onSelectRoom={handleRoomChange}
+        onSelectRoom={(roomId) => handleRoomChange(roomId)}
         onOpenProgress={() => setShowProgressModal(true)}
         onExitGame={onExitGame}
       />
@@ -97,6 +107,7 @@ export const BluAcademyView: React.FC<BluAcademyViewProps> = ({
       {/* 2D Canvas Viewport */}
       <GameCanvas
         currentRoom={currentRoom}
+        spawnPosition={spawnPosition}
         onRoomChange={handleRoomChange}
         onInteractTeacher={(teacher) => setActiveTeacher(teacher)}
         isPaused={isModalOpen}

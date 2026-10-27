@@ -5,8 +5,9 @@ import { InputManager } from "../engine/InputManager";
 import { PixelRenderer, TILE_SIZE } from "../engine/PixelRenderer";
 import { CLASSROOMS } from "../data/classrooms";
 
-interface GameCanvasProps {
+export interface GameCanvasProps {
   currentRoom: ClassroomDef;
+  spawnPosition?: Position;
   onRoomChange: (newRoomId: RoomId, spawnPos?: Position) => void;
   onInteractTeacher: (teacher: TeacherDef) => void;
   isPaused: boolean;
@@ -14,15 +15,22 @@ interface GameCanvasProps {
 
 export const GameCanvas: React.FC<GameCanvasProps> = ({
   currentRoom,
+  spawnPosition,
   onRoomChange,
   onInteractTeacher,
   isPaused,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
+  const getSafeDefaultSpawn = (room: ClassroomDef): Position => {
+    if (room.id === "corridor") return { x: 13, y: 9 };
+    if (["maths", "cs", "physics"].includes(room.id)) return { x: 9.5, y: 11.0 };
+    return { x: 9.5, y: 2.2 };
+  };
+
   // Player position state in grid tile units
   const [playerPos, setPlayerPos] = useState<Position>(() => {
-    return currentRoom.id === "corridor" ? { x: 13, y: 9 } : { x: 10, y: 11 };
+    return spawnPosition || getSafeDefaultSpawn(currentRoom);
   });
 
   const [playerDirection, setPlayerDirection] = useState<Direction>("down");
@@ -36,6 +44,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   const inputManagerRef = useRef<InputManager | null>(null);
   const animFrameIdRef = useRef<number | null>(null);
   const animTickRef = useRef<number>(0);
+  const transitionCooldownRef = useRef<number>(0);
 
   // Position reference for loop
   const posRef = useRef<Position>(playerPos);
@@ -49,6 +58,33 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
   const isPausedRef = useRef<boolean>(isPaused);
   isPausedRef.current = isPaused;
+
+  // Reset and synchronize player state whenever the active room or spawn position changes
+  useEffect(() => {
+    const targetPos = spawnPosition || getSafeDefaultSpawn(currentRoom);
+
+    setPlayerPos(targetPos);
+    posRef.current = targetPos;
+    clickTargetRef.current = null;
+    setIsMoving(false);
+
+    // Initial facing direction based on destination entrance:
+    if (["maths", "cs", "physics"].includes(currentRoom.id)) {
+      setPlayerDirection("up");
+      dirRef.current = "up";
+    } else if (["chemistry", "biology", "social"].includes(currentRoom.id)) {
+      setPlayerDirection("down");
+      dirRef.current = "down";
+    } else {
+      // In hallway, face down if coming from north towers, up if coming from south wings
+      const dir = targetPos.y < 8 ? "down" : "up";
+      setPlayerDirection(dir);
+      dirRef.current = dir;
+    }
+
+    // Set transition cooldown for 600ms to prevent immediate re-entry/bounce
+    transitionCooldownRef.current = performance.now() + 600;
+  }, [currentRoom.id, spawnPosition]);
 
   // Initialize InputManager once
   useEffect(() => {
@@ -149,11 +185,21 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           }
         }
 
-        // Check door transitions
-        const door = CollisionSystem.checkDoor(room, currentPos);
-        if (door) {
-          onRoomChange(door.targetRoom, door.targetPosition);
-          return; // Pause loop until room switch settles
+        // Check door transitions with cooldown protection
+        if (now > transitionCooldownRef.current) {
+          const door = CollisionSystem.checkDoor(room, currentPos);
+          if (door) {
+            transitionCooldownRef.current = now + 600;
+            clickTargetRef.current = null;
+            setIsMoving(false);
+            if (door.targetPosition) {
+              posRef.current = door.targetPosition;
+              setPlayerPos(door.targetPosition);
+            }
+            onRoomChange(door.targetRoom, door.targetPosition);
+            animFrameIdRef.current = requestAnimationFrame(gameLoop);
+            return;
+          }
         }
 
         // Check teacher proximity
