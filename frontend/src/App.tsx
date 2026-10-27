@@ -72,13 +72,8 @@ function App() {
   const [showIntro, setShowIntro] = useState(() => {
     if (typeof window === 'undefined') return false
     const params = new URLSearchParams(window.location.search)
-    if (params.get('intro') === '1') return true
-    if (params.get('intro') === '0' || params.get('langtest') === '1') return false
-    try {
-      return window.sessionStorage.getItem('blu-intro-seen') !== 'true'
-    } catch {
-      return false
-    }
+    if (params.get('langtest') === '1') return false
+    return true
   })
 
   useEffect(() => {
@@ -97,12 +92,7 @@ function App() {
     <>
       {showIntro && (
         <ChalkboardLanding
-          onSkip={() => {
-            try {
-              window.sessionStorage.setItem('blu-intro-seen', 'true')
-            } catch {}
-            setShowIntro(false)
-          }}
+          onSkip={() => setShowIntro(false)}
         />
       )}
       <div className={`app-shell${isDark ? ' theme-dark' : ''}`}>

@@ -134,14 +134,15 @@ class ChalkboardEngine {
         window.addEventListener('resize', () => this.resize());
         this.setupEvents();
 
+        this.createBoardTexture();
+        this.prepareWriting(0);
+
         if (document.fonts) {
             document.fonts.ready.then(() => {
-                this.createBoardTexture();
-                this.prepareWriting(0);
-            });
-        } else {
-            this.createBoardTexture();
-            this.prepareWriting(0);
+                if (this.greetings[this.currentIndex]) {
+                    this.renderTextOffscreen(this.greetings[this.currentIndex]);
+                }
+            }).catch(() => {});
         }
 
         this.lastTime = performance.now();
@@ -343,7 +344,6 @@ class ChalkboardEngine {
         if (this.writeProgress > 0.05) {
             tempCtx.drawImage(this.offscreen, 0, 0);
         }
-        tempCtx.drawImage(this.surfaceCanvas, 0, 0);
 
         const imgData = tempCtx.getImageData(0, 0, this.width, this.height);
         const data = imgData.data;

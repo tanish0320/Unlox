@@ -23,20 +23,27 @@ export const ChalkboardLanding: React.FC<ChalkboardLandingProps> = ({
   const engineRef = useRef<ChalkboardEngine | null>(null)
   const [isFadingOut, setIsFadingOut] = useState(false)
 
+  const onSkipRef = useRef(onSkip)
+  onSkipRef.current = onSkip
+
   const handleSkip = useCallback(() => {
     if (isFadingOut) return
     setIsFadingOut(true)
     setTimeout(() => {
-      if (onSkip) {
-        onSkip()
+      if (onSkipRef.current) {
+        onSkipRef.current()
       }
     }, 380)
-  }, [isFadingOut, onSkip])
+  }, [isFadingOut])
 
   useEffect(() => {
-    if (!containerRef.current) return
+    const container = containerRef.current
+    if (!container) return
 
-    const engine = new ChalkboardEngine(containerRef.current)
+    // Ensure container is empty before mounting engine
+    container.innerHTML = ''
+
+    const engine = new ChalkboardEngine(container)
     engineRef.current = engine
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -58,6 +65,7 @@ export const ChalkboardLanding: React.FC<ChalkboardLandingProps> = ({
         engineRef.current.destroy()
         engineRef.current = null
       }
+      container.innerHTML = ''
     }
   }, [handleSkip])
 

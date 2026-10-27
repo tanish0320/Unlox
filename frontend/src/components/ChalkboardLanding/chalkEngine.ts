@@ -178,6 +178,12 @@ export class ChalkboardEngine {
     }
 
     this.canvas = document.createElement('canvas')
+    this.canvas.style.position = 'absolute'
+    this.canvas.style.top = '0'
+    this.canvas.style.left = '0'
+    this.canvas.style.width = '100%'
+    this.canvas.style.height = '100%'
+    this.canvas.style.display = 'block'
     this.ctx = createSafeContext(this.canvas)
     this.container.appendChild(this.canvas)
 
@@ -195,15 +201,20 @@ export class ChalkboardEngine {
     this.resize()
     window.addEventListener('resize', this.handleResize)
 
-    if (document.fonts) {
+    this.createBoardTexture()
+    this.prepareWriting(0)
+
+    if (this.greetings[0]) {
+      this.renderTextOffscreen(this.greetings[0])
+    }
+
+    if (typeof document !== 'undefined' && document.fonts) {
       document.fonts.ready.then(() => {
         if (this.isDestroyed) return
-        this.createBoardTexture()
-        this.prepareWriting(0)
-      })
-    } else {
-      this.createBoardTexture()
-      this.prepareWriting(0)
+        if (this.greetings[this.currentIndex]) {
+          this.renderTextOffscreen(this.greetings[this.currentIndex])
+        }
+      }).catch(() => {})
     }
 
     this.lastTime = performance.now()
@@ -216,8 +227,8 @@ export class ChalkboardEngine {
 
   public resize(): void {
     const rect = this.container.getBoundingClientRect()
-    this.width = Math.floor(rect.width) || window.innerWidth
-    this.height = Math.floor(rect.height) || window.innerHeight
+    this.width = Math.floor(rect.width) || window.innerWidth || 1200
+    this.height = Math.floor(rect.height) || window.innerHeight || 800
 
     this.canvas.width = Math.floor(this.width * this.dpr)
     this.canvas.height = Math.floor(this.height * this.dpr)
@@ -426,7 +437,8 @@ export class ChalkboardEngine {
 
   private animate = (now: number): void => {
     if (this.isDestroyed) return
-    const dt = Math.min(now - this.lastTime, 60)
+    const rawDt = now - this.lastTime
+    const dt = rawDt > 0 ? Math.min(rawDt, 60) : 16.6
     this.lastTime = now
 
     this.update(dt)
@@ -680,5 +692,8 @@ export class ChalkboardEngine {
     }
     window.removeEventListener('resize', this.handleResize)
     this.audio.stopWriting()
+    if (this.canvas && this.canvas.parentNode) {
+      this.canvas.parentNode.removeChild(this.canvas)
+    }
   }
 }
