@@ -1,0 +1,427 @@
+﻿@import "../../styles/sceneTokens.css";
+@import "../../styles/fonts.css";
+
+/* Base Stage */
+.blu-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background-color: var(--blu-bg);
+  background-image: 
+    radial-gradient(circle at 15% 20%, rgba(56, 189, 248, 0.08) 0%, transparent 45%),
+    radial-gradient(circle at 85% 80%, rgba(167, 139, 250, 0.08) 0%, transparent 45%),
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+  color: var(--blu-text);
+  font-family: var(--blu-font-sans);
+  overflow: hidden;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+.blu-stage-inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 36px 48px 100px 48px; /* 100px bottom padding reserved for captions */
+  box-sizing: border-box;
+}
+
+/* Common Scene Header */
+.blu-scene-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  z-index: 10;
+}
+
+.blu-scene-heading {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--blu-text);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.blu-scene-badge {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 4px 10px;
+  border-radius: var(--blu-radius-full);
+  background: rgba(56, 189, 248, 0.12);
+  color: var(--blu-primary);
+  border: 1px solid var(--blu-border);
+}
+
+/* ==================== TITLE CARD ==================== */
+.blu-title-card {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 60px 100px 60px;
+  text-align: center;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.blu-title-graphics {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.blu-title-content {
+  position: relative;
+  z-index: 2;
+  max-width: 960px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.blu-title-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-radius: var(--blu-radius-full);
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid var(--blu-border-strong);
+  color: var(--blu-primary);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.blu-title-heading {
+  font-size: 46px;
+  font-weight: 800;
+  line-height: 1.18;
+  letter-spacing: -0.025em;
+  margin: 0;
+  background: linear-gradient(135deg, #FFFFFF 0%, #E0F2FE 50%, var(--blu-primary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 4px 20px rgba(56, 189, 248, 0.2);
+}
+
+.blu-title-subtitle {
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--blu-muted);
+  max-width: 720px;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.blu-title-divider {
+  width: 90px;
+  height: 4px;
+  background: linear-gradient(90deg, var(--blu-primary), var(--blu-secondary));
+  border-radius: var(--blu-radius-full);
+  margin-top: 8px;
+}
+
+/* ==================== DIAGRAM SCENE ==================== */
+.blu-diagram-container {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.blu-diagram-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.blu-diagram-node-rect {
+  transition: stroke 0.2s ease, fill 0.2s ease;
+}
+
+.blu-diagram-label {
+  font-size: 15px;
+  font-weight: 600;
+  fill: var(--blu-text);
+  pointer-events: none;
+}
+
+.blu-diagram-sublabel {
+  font-size: 12px;
+  font-weight: 400;
+  fill: var(--blu-muted);
+  pointer-events: none;
+}
+
+.blu-diagram-edge-label {
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--blu-primary);
+  background: var(--blu-surface);
+}
+
+/* ==================== CODE WALKTHROUGH ==================== */
+.blu-code-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--blu-code-bg);
+  border: 1px solid var(--blu-border);
+  border-radius: var(--blu-radius-md);
+  box-shadow: var(--blu-shadow-card);
+  overflow: hidden;
+  min-height: 0;
+}
+
+.blu-code-header {
+  height: 40px;
+  background: rgba(17, 26, 46, 0.95);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+}
+
+.blu-code-dots {
+  display: flex;
+  gap: 7px;
+}
+
+.blu-code-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+}
+
+.blu-code-dot-red { background: #FF5F56; }
+.blu-code-dot-yellow { background: #FFBD2E; }
+.blu-code-dot-green { background: #27C93F; }
+
+.blu-code-filename {
+  font-family: var(--blu-font-mono);
+  font-size: 13px;
+  color: var(--blu-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.blu-code-badge {
+  font-family: var(--blu-font-mono);
+  font-size: 11px;
+  color: var(--blu-muted);
+}
+
+.blu-code-body {
+  flex: 1;
+  padding: 18px 0;
+  overflow-y: auto;
+  font-family: var(--blu-font-mono);
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.blu-code-line {
+  display: flex;
+  align-items: center;
+  padding: 2px 20px;
+  position: relative;
+  transition: background 0.15s ease;
+}
+
+.blu-code-line.active {
+  background: var(--blu-code-highlight);
+  box-shadow: inset 4px 0 0 var(--blu-primary);
+}
+
+.blu-code-lineno {
+  width: 44px;
+  text-align: right;
+  margin-right: 20px;
+  color: rgba(148, 163, 184, 0.4);
+  font-size: 13px;
+  user-select: none;
+}
+
+.blu-code-line.active .blu-code-lineno {
+  color: var(--blu-primary);
+  font-weight: 700;
+}
+
+.blu-code-text {
+  flex: 1;
+  white-space: pre;
+  color: var(--blu-text);
+}
+
+/* Syntax tokens */
+.blu-token-keyword { color: #F472B6; font-weight: 600; }
+.blu-token-function { color: #60A5FA; }
+.blu-token-string { color: #34D399; }
+.blu-token-number { color: #FBBF24; }
+.blu-token-comment { color: #64748B; font-style: italic; }
+.blu-token-operator { color: #38BDF8; }
+
+/* ==================== CAPTION TRACK ==================== */
+.blu-caption-container {
+  position: absolute;
+  bottom: 18px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  padding: 0 40px;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.blu-caption-box {
+  background: rgba(11, 16, 32, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--blu-border-strong);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), var(--blu-shadow-glow);
+  border-radius: var(--blu-radius-md);
+  padding: 10px 24px;
+  max-width: 85%;
+  text-align: center;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.blu-caption-text {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--blu-text);
+  word-wrap: break-word;
+}
+
+/* ==================== NOTES PREVIEW ==================== */
+.blu-notes-container {
+  background: var(--blu-surface);
+  border: 1px solid var(--blu-border);
+  border-radius: var(--blu-radius-lg);
+  padding: 32px;
+  color: var(--blu-text);
+  font-family: var(--blu-font-sans);
+  max-width: 900px;
+  margin: 0 auto;
+  box-shadow: var(--blu-shadow-card);
+}
+
+.blu-notes-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 20px;
+  margin-bottom: 24px;
+}
+
+.blu-notes-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.blu-notes-title {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--blu-text);
+  margin: 0 0 10px 0;
+}
+
+.blu-notes-summary {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--blu-text-secondary);
+  margin: 0;
+}
+
+.blu-notes-section {
+  margin-top: 28px;
+}
+
+.blu-notes-section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--blu-primary);
+  margin: 0 0 14px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.blu-notes-list {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--blu-text-secondary);
+  line-height: 1.6;
+}
+
+.blu-notes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.blu-notes-card {
+  background: var(--blu-surface-alt);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--blu-radius-sm);
+  padding: 14px 16px;
+}
+
+.blu-notes-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--blu-secondary);
+  margin: 0 0 6px 0;
+}
+
+.blu-notes-card-desc {
+  font-size: 13px;
+  color: var(--blu-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.blu-notes-qa {
+  background: rgba(17, 26, 46, 0.6);
+  border-left: 3px solid var(--blu-primary);
+  border-radius: 0 var(--blu-radius-sm) var(--blu-radius-sm) 0;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+}
+
+.blu-notes-q {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--blu-text);
+  margin-bottom: 6px;
+}
+
+.blu-notes-a {
+  font-size: 13px;
+  color: var(--blu-text-secondary);
+  line-height: 1.5;
+}
