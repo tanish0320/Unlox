@@ -52,6 +52,7 @@ class JobRecord:
     video_path: Optional[str] = None
     notes_path: Optional[str] = None
     subtitles_path: Optional[str] = None
+    stage_timings: Dict[str, float] = field(default_factory=dict)
 
     def to_status_response(self) -> JobStatusResponse:
         return JobStatusResponse(
@@ -199,6 +200,13 @@ class JobManager:
     def list_jobs(self) -> List[JobRecord]:
         with self._lock:
             return list(self._jobs.values())
+
+    def record_stage_timing(self, lesson_id: str, stage: str, duration_ms: float) -> None:
+        """Records elapsed time for a given pipeline stage in milliseconds."""
+        with self._lock:
+            job = self._jobs.get(lesson_id)
+            if job:
+                job.stage_timings[stage] = round(duration_ms, 1)
 
     def clear(self) -> None:
         """Clears all jobs (primarily used for unit test isolation)."""

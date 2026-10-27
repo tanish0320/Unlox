@@ -11,6 +11,7 @@ Provides the minimal reliable FastAPI application:
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.app.api.jobs import router as jobs_router
 from backend.app.api.lessons import router as lessons_router
 
 app = FastAPI(
@@ -33,6 +34,10 @@ app.add_middleware(
 
 # Register API routers
 app.include_router(lessons_router, prefix="/api")
+app.include_router(jobs_router, prefix="/api")
+# Root-level aliases for direct or proxy-rewritten endpoints
+app.include_router(jobs_router)
+app.include_router(lessons_router)
 
 
 @app.get("/", tags=["General"])

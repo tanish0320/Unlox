@@ -92,3 +92,14 @@ class HealthResponse(BaseModel):
     ffmpeg_available: bool
     fallback_video_exists: bool
     version: str = "1.0.0"
+
+
+# Re-export Phase 3A compatibility models
+from backend.app.schemas.jobs_models import (  # noqa: E402
+    AudioArtifactModel,
+    CompatArtifactManifestModel,
+    CompatJobStatusResponse,
+    CompatLessonResponse,
+    JobGenerateRequest,
+    JobGenerateResponse,
+)

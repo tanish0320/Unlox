@@ -11,6 +11,7 @@ Coordinates the end-to-end local generation job:
 """
 
 from pathlib import Path
+import time
 from typing import Optional
 
 from backend.app.schemas.adapters import provisional_to_canonical
@@ -52,6 +53,7 @@ def execute_lesson_generation(
             message=f"Planning lesson on '{request.topic}'...",
         )
 
+        t_plan = time.perf_counter()
         plan, plan_fallback = pipeline.planner.plan_lesson(
             topic=request.topic,
             level=request.level,
@@ -59,6 +61,7 @@ def execute_lesson_generation(
             target_duration_seconds=request.target_duration_seconds,
             simulate_error=simulate_pipeline_error,
         )
+        job_manager.record_stage_timing(lesson_id, "planning", (time.perf_counter() - t_plan) * 1000)
         fallback_flags.append(plan_fallback)
 
         # ---------------------------------------------------------
@@ -72,10 +75,12 @@ def execute_lesson_generation(
                 progress_percent=45,
                 message=f"Translating lesson narration into '{request.language}'...",
             )
+            t_trans = time.perf_counter()
             translated_plan, trans_fallback = pipeline.translator.translate_lesson(
                 lesson=plan,
                 target_language=request.language,
             )
+            job_manager.record_stage_timing(lesson_id, "translating", (time.perf_counter() - t_trans) * 1000)
             fallback_flags.append(trans_fallback)
         else:
             translated_plan = plan
@@ -90,10 +95,12 @@ def execute_lesson_generation(
             progress_percent=70,
             message="Synthesizing narration audio and computing timestamps...",
         )
+        t_synth = time.perf_counter()
         manifest = pipeline.tts.synthesize_lesson(
             lesson=translated_plan,
             lesson_id=lesson_id,
         )
+        job_manager.record_stage_timing(lesson_id, "synthesizing", (time.perf_counter() - t_synth) * 1000)
         fallback_flags.append(manifest.fallback_used)
 
         overall_fallback = any(fallback_flags)
@@ -108,11 +115,13 @@ def execute_lesson_generation(
             progress_percent=80,
             message="Generating structured study notes...",
         )
+        t_notes = time.perf_counter()
         notes = generate_study_notes(
             lesson=translated_plan,
             manifest=manifest,
             fallback_used=overall_fallback,
         )
+        job_manager.record_stage_timing(lesson_id, "generating_notes", (time.perf_counter() - t_notes) * 1000)
 
         notes_file = out_base / "lesson-notes.json"
         import json
@@ -149,6 +158,7 @@ def execute_lesson_generation(
                     message=msg,
                 )
 
+            t_export = time.perf_counter()
             artifacts = export_lesson_video(
                 lesson_id=lesson_id,
                 canonical_plan=canonical_plan,
@@ -157,6 +167,7 @@ def execute_lesson_generation(
                 notes_path=notes_file,
                 on_progress=handle_export_progress,
             )
+            job_manager.record_stage_timing(lesson_id, "exporting", (time.perf_counter() - t_export) * 1000)
             video_path_str = str(artifacts.video_path)
             subtitles_path_str = str(artifacts.subtitles_path)
 
