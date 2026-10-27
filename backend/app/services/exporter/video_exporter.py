@@ -142,14 +142,26 @@ class FrameRenderer:
         self.text_muted = (148, 163, 184)       # #94A3B8
         self.code_bg = (15, 23, 42)             # #0F172A
 
-        # Load fonts safely with fallback to default
+        # Load fonts safely with Indic Unicode font support (Nirmala.ttc on Windows)
+        nirmala = "C:/Windows/Fonts/Nirmala.ttc"
+        nirmala_b = "C:/Windows/Fonts/NirmalaB.ttc"
+        has_nirmala = os.path.isfile(nirmala)
+
         try:
-            self.font_title = ImageFont.truetype("arial.ttf", 40)
-            self.font_heading = ImageFont.truetype("arial.ttf", 30)
-            self.font_body = ImageFont.truetype("arial.ttf", 22)
+            if has_nirmala:
+                title_font = nirmala_b if os.path.isfile(nirmala_b) else nirmala
+                self.font_title = ImageFont.truetype(title_font, 40)
+                self.font_heading = ImageFont.truetype(title_font, 30)
+                self.font_body = ImageFont.truetype(nirmala, 22)
+                self.font_caption = ImageFont.truetype(nirmala, 22)
+                self.font_badge = ImageFont.truetype(title_font, 16)
+            else:
+                self.font_title = ImageFont.truetype("arial.ttf", 40)
+                self.font_heading = ImageFont.truetype("arial.ttf", 30)
+                self.font_body = ImageFont.truetype("arial.ttf", 22)
+                self.font_caption = ImageFont.truetype("arial.ttf", 22)
+                self.font_badge = ImageFont.truetype("arial.ttf", 16)
             self.font_code = ImageFont.truetype("consola.ttf", 20)
-            self.font_caption = ImageFont.truetype("arial.ttf", 22)
-            self.font_badge = ImageFont.truetype("arial.ttf", 16)
         except Exception:
             self.font_title = ImageFont.load_default()
             self.font_heading = ImageFont.load_default()

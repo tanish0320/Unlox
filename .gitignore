@@ -17,6 +17,7 @@ ENV/
 
 # Temporary test audio
 test_*.wav
+*.onnx
 outputs/audio/
 outputs/test_run/
 outputs/generated/

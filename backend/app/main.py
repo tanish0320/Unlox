@@ -36,6 +36,7 @@ from backend.app.services.planner.mock_planner import MockLessonPlanner
 from backend.app.services.translation.translation_adapter import LocalTranslationDispatcher
 from backend.app.services.tts.tts_adapter import LocalTTSDispatcher
 from backend.app.services.notes_generator import generate_study_notes
+from backend.app.services.pdf_generator import generate_lesson_pdf
 from backend.app.services.exporter.video_exporter import (
     export_mp4_video,
     generate_srt_file,
@@ -205,6 +206,13 @@ def run_lesson_pipeline(job_id: str, lesson_id: str, req: GenerateRequest):
         lesson.glossary = [{"term": c.term, "definition": c.definition} for c in notes.key_concepts]
         lesson.revision_questions = [{"question": q.question, "answer": q.answer} for q in notes.revision_questions]
 
+        # Generate offline study notes PDF
+        out_pdf = lesson_dir / f"{lesson_id}_notes.pdf"
+        try:
+            generate_lesson_pdf(lesson=lesson, notes=notes, output_path=out_pdf)
+        except Exception as pdf_err:
+            print(f"Warning: PDF generation encountered non-fatal error: {pdf_err}")
+
         # Step 5: Exporting MP4 Video & SRT
         JOB_STORE[job_id]["step"] = "exporting_video"
         JOB_STORE[job_id]["percent"] = 85
@@ -257,6 +265,13 @@ def health():
         "ffmpeg_path": ffmpeg_p,
         "supported_languages": ["en", "hi", "ta", "te", "kn"],
     }
+
+
+@app.get("/api/tts/voices")
+def get_tts_voices():
+    """Returns local TTS engine status and voice availability per language."""
+    dispatcher = LocalTTSDispatcher()
+    return dispatcher.get_supported_voices()
 
 
 @app.post("/api/lessons/generate")
@@ -355,16 +370,95 @@ def get_manifest(lesson_id: str):
 
 
 @app.get("/api/lessons/{lesson_id}/notes")
-def get_notes(lesson_id: str):
-    """Retrieves structured study notes."""
+def get_notes(lesson_id: str, download: bool = False):
+    """Retrieves structured study notes JSON or downloads it directly."""
+    # Check if sample bundle
+    if lesson_id in ("sample_en", "sample") or lesson_id.startswith("sample"):
+        sample_path = ROOT_DIR / "outputs" / "integration_fixtures" / "en" / "lesson-notes.json"
+        if sample_path.is_file():
+            if download:
+                return FileResponse(
+                    str(sample_path),
+                    media_type="application/json",
+                    filename=f"{lesson_id}_notes.json",
+                    headers={"Content-Disposition": f'attachment; filename="{lesson_id}_notes.json"'}
+                )
+            return json.loads(sample_path.read_text(encoding="utf-8"))
+
     if lesson_id in NOTES_STORE:
-        return NOTES_STORE[lesson_id]
+        notes_data = NOTES_STORE[lesson_id].model_dump()
+        if download:
+            notes_path = OUTPUTS_DIR / lesson_id / "lesson-notes.json"
+            if notes_path.is_file():
+                return FileResponse(
+                    str(notes_path),
+                    media_type="application/json",
+                    filename=f"{lesson_id}_notes.json",
+                    headers={"Content-Disposition": f'attachment; filename="{lesson_id}_notes.json"'}
+                )
+            return JSONResponse(
+                content=notes_data,
+                headers={"Content-Disposition": f'attachment; filename="{lesson_id}_notes.json"'}
+            )
+        return notes_data
 
     notes_path = OUTPUTS_DIR / lesson_id / "lesson-notes.json"
     if notes_path.is_file():
+        if download:
+            return FileResponse(
+                str(notes_path),
+                media_type="application/json",
+                filename=f"{lesson_id}_notes.json",
+                headers={"Content-Disposition": f'attachment; filename="{lesson_id}_notes.json"'}
+            )
         return json.loads(notes_path.read_text(encoding="utf-8"))
 
     raise HTTPException(status_code=404, detail="Lesson notes not found")
+
+
+@app.get("/api/lessons/{lesson_id}/notes/pdf")
+def get_notes_pdf(lesson_id: str):
+    """Generates and downloads beautifully formatted PDF study notes with Unicode support."""
+    # 1. Sample bundle PDF
+    if lesson_id in ("sample_en", "sample") or lesson_id.startswith("sample"):
+        en_dir = ROOT_DIR / "outputs" / "integration_fixtures" / "en"
+        fixture_pdf = en_dir / "lesson-notes.pdf"
+        if not fixture_pdf.is_file():
+            plan_file = en_dir / "lesson_plan.json"
+            notes_file = en_dir / "lesson-notes.json"
+            if plan_file.is_file():
+                p = LessonPlan(**json.loads(plan_file.read_text(encoding="utf-8")))
+                n = LessonNotes(**json.loads(notes_file.read_text(encoding="utf-8"))) if notes_file.is_file() else None
+                generate_lesson_pdf(lesson=p, notes=n, output_path=fixture_pdf)
+
+        if fixture_pdf.is_file():
+            return FileResponse(
+                str(fixture_pdf),
+                media_type="application/pdf",
+                filename="sample_en_study_notes.pdf",
+                headers={"Content-Disposition": 'attachment; filename="sample_en_study_notes.pdf"'}
+            )
+
+    # 2. Generated lesson PDF
+    pdf_path = OUTPUTS_DIR / lesson_id / f"{lesson_id}_notes.pdf"
+    if not pdf_path.is_file():
+        # Generate on demand if missing
+        plan_path = OUTPUTS_DIR / lesson_id / "lesson_plan.json"
+        notes_path = OUTPUTS_DIR / lesson_id / "lesson-notes.json"
+        if plan_path.is_file():
+            p = LessonPlan(**json.loads(plan_path.read_text(encoding="utf-8")))
+            n = LessonNotes(**json.loads(notes_path.read_text(encoding="utf-8"))) if notes_path.is_file() else None
+            generate_lesson_pdf(lesson=p, notes=n, output_path=pdf_path)
+
+    if pdf_path.is_file():
+        return FileResponse(
+            str(pdf_path),
+            media_type="application/pdf",
+            filename=f"{lesson_id}_study_notes.pdf",
+            headers={"Content-Disposition": f'attachment; filename="{lesson_id}_study_notes.pdf"'}
+        )
+
+    raise HTTPException(status_code=404, detail="Study notes PDF not found")
 
 
 @app.get("/api/lessons/{lesson_id}/video")
@@ -392,6 +486,37 @@ def get_captions(lesson_id: str):
         raise HTTPException(status_code=404, detail="SRT captions not found")
 
     return FileResponse(str(srt_path), media_type="text/plain", filename=f"{lesson_id}.srt")
+
+
+@app.get("/api/lessons/fixtures/en/video")
+def get_fixture_video():
+    fixture_mp4 = ROOT_DIR / "outputs" / "exported_videos" / "en" / "lesson_en.mp4"
+    if fixture_mp4.is_file():
+        return FileResponse(str(fixture_mp4), media_type="video/mp4", filename="sample_lesson.mp4")
+    raise HTTPException(status_code=404, detail="Fixture video not found")
+
+
+@app.get("/api/lessons/fixtures/en/notes")
+def get_fixture_notes(download: bool = False):
+    notes_path = ROOT_DIR / "outputs" / "integration_fixtures" / "en" / "lesson-notes.json"
+    if notes_path.is_file():
+        if download:
+            return FileResponse(
+                str(notes_path),
+                media_type="application/json",
+                filename="sample_notes.json",
+                headers={"Content-Disposition": 'attachment; filename="sample_notes.json"'}
+            )
+        return json.loads(notes_path.read_text(encoding="utf-8"))
+    raise HTTPException(status_code=404, detail="Fixture notes not found")
+
+
+@app.get("/api/lessons/fixtures/en/captions")
+def get_fixture_captions():
+    fixture_srt = ROOT_DIR / "outputs" / "exported_videos" / "en" / "lesson_en.srt"
+    if fixture_srt.is_file():
+        return FileResponse(str(fixture_srt), media_type="text/plain", filename="sample_lesson.srt")
+    raise HTTPException(status_code=404, detail="Fixture captions not found")
 
 
 @app.get("/api/audio/{lesson_id}/{filename}")

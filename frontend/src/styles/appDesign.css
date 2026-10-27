@@ -706,3 +706,317 @@ body {
   border-color: var(--bvt-green-mid);
   color: var(--bvt-green-dark);
 }
+
+/* ==========================================================================
+   Blu Visual Teacher — Enhanced Interactive Controls, Dark Mode & Dashboard
+   ========================================================================== */
+
+:root {
+  --bvt-font-scale: 1;
+}
+
+html {
+  font-size: calc(16px * var(--bvt-font-scale));
+}
+
+/* Dark Mode Tokens */
+html.bvt-dark, body.bvt-dark, .bvt-dark {
+  --bvt-bg: #0D1117;
+  --bvt-bg-card: #161B22;
+  --bvt-bg-preview: #0F172A;
+  --bvt-border: #30363D;
+  --bvt-border-dark: #484F58;
+
+  --bvt-text-main: #F0F6FC;
+  --bvt-text-muted: #8B949E;
+  --bvt-text-light: #6E7681;
+
+  --bvt-green-dark: #238636;
+  --bvt-green-mid: #2EA043;
+  --bvt-green-light: #172B21;
+  --bvt-green-tag: #1F3628;
+
+  --bvt-terra: #E59866;
+  --bvt-terra-hover: #F0B27A;
+}
+
+body.bvt-dark, html.bvt-dark body {
+  background-color: #0D1117 !important;
+  background-image: radial-gradient(#21262D 1.2px, transparent 1.2px) !important;
+  color: #F0F6FC !important;
+}
+
+html.bvt-dark .bvt-header {
+  background: rgba(13, 17, 23, 0.95);
+  border-bottom-color: #30363D;
+}
+
+html.bvt-dark .bvt-logo-title {
+  color: #F0F6FC;
+}
+
+html.bvt-dark .bvt-card {
+  background: #161B22;
+  border-color: #30363D;
+}
+
+html.bvt-dark .bvt-card-title-group h2 {
+  color: #F0F6FC;
+}
+
+html.bvt-dark .bvt-main-heading {
+  color: #F0F6FC;
+}
+
+html.bvt-dark .bvt-pill-btn {
+  background: #21262D;
+  border-color: #30363D;
+  color: #C9D1D9;
+}
+
+html.bvt-dark .bvt-pill-btn:hover {
+  background: #30363D;
+}
+
+html.bvt-dark .bvt-pill-btn.active {
+  background: #238636;
+  color: #FFFFFF;
+  border-color: #2EA043;
+}
+
+html.bvt-dark .bvt-input-container {
+  background: #0D1117;
+  border-color: #30363D;
+}
+
+html.bvt-dark .bvt-input-container textarea {
+  color: #F0F6FC;
+}
+
+html.bvt-dark .bvt-cat-btn {
+  background: #21262D;
+  color: #8B949E;
+}
+
+html.bvt-dark .bvt-cat-btn.active {
+  background: #161B22;
+  color: #58A6FF;
+}
+
+html.bvt-dark .bvt-idea-pill {
+  background: #21262D;
+  border-color: #30363D;
+  color: #C9D1D9;
+}
+
+html.bvt-dark .bvt-idea-pill:hover {
+  background: #30363D;
+}
+
+html.bvt-dark .bvt-select {
+  background: #0D1117;
+  border-color: #30363D;
+  color: #F0F6FC;
+}
+
+html.bvt-dark .bvt-level-btn {
+  background: #21262D;
+  color: #8B949E;
+}
+
+html.bvt-dark .bvt-level-btn.active {
+  background: #161B22;
+  color: #58A6FF;
+}
+
+html.bvt-dark .bvt-lang-pill {
+  background: #21262D;
+  border-color: #30363D;
+  color: #C9D1D9;
+}
+
+html.bvt-dark .bvt-lang-pill.active {
+  background: #172B21;
+  border-color: #2EA043;
+  color: #3FB950;
+}
+
+html.bvt-dark .bvt-preview-card {
+  background: #161B22;
+  border-color: #30363D;
+}
+
+html.bvt-dark .bvt-preview-tab {
+  color: #8B949E;
+}
+
+html.bvt-dark .bvt-preview-tab.active {
+  background: #21262D;
+  color: #58A6FF;
+}
+
+html.bvt-dark .bvt-player-controls {
+  background: #161B22;
+  border-color: #30363D;
+}
+
+html.bvt-dark .bvt-ctrl-btn {
+  color: #F0F6FC;
+}
+
+html.bvt-dark .bvt-download-btn {
+  background: #21262D;
+  border-color: #30363D;
+  color: #F0F6FC;
+}
+
+html.bvt-dark .bvt-download-btn:hover {
+  background: #172B21;
+  border-color: #2EA043;
+  color: #3FB950;
+}
+
+/* Voice indicator tag */
+.bvt-voice-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  background: #DEF0E5;
+  color: #234E3C;
+  border: 1px solid #B8DCBD;
+  margin-top: 6px;
+}
+
+.bvt-voice-tag.missing {
+  background: #FEF3C7;
+  color: #92400E;
+  border-color: #FCD34D;
+}
+
+/* Badges for Demo vs Generated Lesson */
+.bvt-badge-demo {
+  background: #FEF3C7;
+  color: #92400E;
+  border: 1px solid #FCD34D;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.bvt-badge-live {
+  background: #DEF0E5;
+  color: #234E3C;
+  border: 1px solid #B8DCBD;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Home Overview Dashboard */
+.bvt-home-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.bvt-home-hero {
+  background: linear-gradient(135deg, #234E3C 0%, #17382B 100%);
+  color: #FFFFFF;
+  border-radius: 20px;
+  padding: 36px 40px;
+  position: relative;
+  overflow: hidden;
+}
+
+.bvt-home-hero h2 {
+  font-family: var(--bvt-font-display);
+  font-size: 32px;
+  margin: 0 0 10px 0;
+}
+
+.bvt-home-hero p {
+  font-size: 15px;
+  color: #DEF0E5;
+  margin: 0 0 20px 0;
+  max-width: 600px;
+  line-height: 1.5;
+}
+
+.bvt-home-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.bvt-home-stat-card {
+  background: #FFFFFF;
+  border: 1px solid var(--bvt-border);
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+html.bvt-dark .bvt-home-stat-card {
+  background: #161B22;
+  border-color: #30363D;
+}
+
+.bvt-home-stat-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--bvt-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.bvt-home-stat-val {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--bvt-green-dark);
+}
+
+html.bvt-dark .bvt-home-stat-val {
+  color: #3FB950;
+}
+
+.bvt-home-templates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.bvt-home-template-card {
+  background: #FFFFFF;
+  border: 1px solid var(--bvt-border);
+  border-radius: 14px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+html.bvt-dark .bvt-home-template-card {
+  background: #161B22;
+  border-color: #30363D;
+}
+
+.bvt-home-template-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--bvt-green-mid);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}

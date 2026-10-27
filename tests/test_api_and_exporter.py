@@ -217,3 +217,87 @@ def test_api_generate_lesson_endpoint():
     assert "percent" in job_data
 
 
+
+
+def test_api_notes_json_and_pdf_download():
+    """Verify notes JSON and PDF download endpoints for sample and generated lessons."""
+    # 1. Sample bundle JSON download
+    res_json = client.get("/api/lessons/sample_en/notes?download=true")
+    assert res_json.status_code == 200
+    assert "application/json" in res_json.headers["content-type"]
+    assert "attachment" in res_json.headers.get("content-disposition", "")
+    data = res_json.json()
+    assert "summary" in data
+    assert "learning_objectives" in data
+
+    # 2. Sample bundle PDF download
+    res_pdf = client.get("/api/lessons/sample_en/notes/pdf")
+    assert res_pdf.status_code == 200
+    assert res_pdf.headers["content-type"] == "application/pdf"
+    assert "attachment" in res_pdf.headers.get("content-disposition", "")
+    assert len(res_pdf.content) > 1000
+    assert res_pdf.content.startswith(b"%PDF")
+
+
+def test_api_tts_voices_endpoint():
+    """Verify /api/tts/voices endpoint lists local speech engines and voice availability."""
+    res = client.get("/api/tts/voices")
+    assert res.status_code == 200
+    voices = res.json()
+    assert "hi" in voices
+    assert "en" in voices
+    assert "te" in voices
+    assert "ta" in voices
+    assert "kn" in voices
+    # Hindi and Telugu are locally installed via Piper ONNX
+    assert voices["hi"]["available"] is True
+    assert "piper" in voices["hi"]["engine"].lower()
+    assert voices["te"]["available"] is True
+    assert "piper" in voices["te"]["engine"].lower()
+    # English uses native Windows SAPI5
+    assert voices["en"]["available"] is True
+    assert "windows" in voices["en"]["engine"].lower() or "sapi5" in voices["en"]["engine"].lower()
+    # Tamil and Kannada are missing with clear instructions
+    assert voices["ta"]["available"] is False
+    assert "error" in voices["ta"]
+
+
+def test_real_hindi_speech_synthesis():
+    """Verify genuine offline neural speech synthesis for Hindi Devanagari text."""
+    from backend.app.services.tts.tts_adapter import LocalTTSDispatcher
+    import wave
+
+    dispatcher = LocalTTSDispatcher()
+    hindi_text = "अनुपात और समानुपात के इस पाठ में आपका स्वागत है।"
+    tts_res = dispatcher.synthesize(text=hindi_text, language="hi")
+
+    wav_file = Path(tts_res.audio_file)
+    assert wav_file.is_file()
+    audio_bytes = wav_file.read_bytes()
+    assert len(audio_bytes) > 20000
+    assert tts_res.duration_seconds > 1.0
+    assert tts_res.fallback_used is False
+    assert "piper" in tts_res.voice_id.lower() or "pratham" in tts_res.voice_id.lower()
+
+    # Verify standard WAV headers and format
+    with wave.open(str(wav_file), "rb") as wf:
+        assert wf.getnchannels() == 1
+        assert wf.getsampwidth() == 2
+        assert wf.getframerate() == 22050
+        frames = wf.getnframes()
+        calc_dur = frames / wf.getframerate()
+        assert abs(calc_dur - tts_res.duration_seconds) < 0.2
+
+
+def test_missing_voice_error_for_unsupported_language():
+    """Verify requesting an unsupported language raises MissingLocalVoiceError without substituting English."""
+    import pytest
+    from backend.app.services.tts.tts_adapter import LocalTTSDispatcher, MissingLocalVoiceError
+
+    dispatcher = LocalTTSDispatcher()
+    with pytest.raises(MissingLocalVoiceError) as exc_info:
+        dispatcher.synthesize(text="வணக்கம்", language="ta")
+
+    err = str(exc_info.value)
+    assert "Tamil" in err or "ta" in err
+    assert "piper" in err.lower() or "install" in err.lower()

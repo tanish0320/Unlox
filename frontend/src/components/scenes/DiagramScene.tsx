@@ -1,4 +1,4 @@
-﻿import React, { useMemo } from "react";
+import React, { useMemo } from "react";
 import { DiagramSceneProps, DiagramNode, DiagramEdge } from "./sceneTypes";
 import {
   normalizedProgress,
@@ -66,8 +66,8 @@ export const DiagramSceneComponent: React.FC<DiagramSceneProps> = ({
     const nodeCount = rawNodes.length;
     if (nodeCount === 0) return { nodes: [], edges: [] };
 
-    const nodeWidth = 220;
-    const nodeHeight = 68;
+    const nodeWidth = 240;
+    const nodeHeight = 76;
 
     const hasBackEdge = rawEdges.some((edge) => {
       const fromIdx = rawNodes.findIndex((n) => n.id === edge.from);
@@ -166,6 +166,7 @@ export const DiagramSceneComponent: React.FC<DiagramSceneProps> = ({
 
   const activeIndex = activeStepIndex(progress, layout.nodes.length);
   const pulse = deterministicPulse(progress, 3);
+  const isRatioTopic = /ratio|proportion|अनुपात|समानुपात|तुलना/i.test(scene.heading || "") || layout.nodes.some((n) => /ratio|proportion|अनुपात|:/i.test(n.label));
 
   return (
     <div
@@ -409,6 +410,17 @@ export const DiagramSceneComponent: React.FC<DiagramSceneProps> = ({
                 </g>
               );
             })}
+            {isRatioTopic && (
+              <g transform="translate(640, 510)">
+                <rect x="-340" y="-32" width="680" height="64" rx="14" fill="#111A2E" stroke="rgba(56, 189, 248, 0.4)" strokeWidth="1.5" />
+                <rect x="-310" y="-12" width="240" height="26" rx="6" fill="#38BDF8" opacity="0.85" />
+                <text x="-190" y="5" fill="#0B1020" fontSize="13" fontWeight="bold" textAnchor="middle">Quantity A (2 units)</text>
+                <text x="-50" y="6" fill="#38BDF8" fontSize="18" fontWeight="bold" textAnchor="middle">:</text>
+                <rect x="-30" y="-12" width="340" height="26" rx="6" fill="#34D399" opacity="0.85" />
+                <text x="140" y="5" fill="#0B1020" fontSize="13" fontWeight="bold" textAnchor="middle">Quantity B (3 units)</text>
+                <text x="-310" y="-18" fill="#94A3B8" fontSize="11" fontWeight="600" letterSpacing="0.5">RATIO &amp; PROPORTION VISUALIZER</text>
+              </g>
+            )}
           </svg>
         )}
       </div>
