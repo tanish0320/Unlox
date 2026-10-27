@@ -26,6 +26,7 @@ def execute_lesson_generation(
     job_manager: JobManager,
     output_dir: Optional[Path] = None,
     simulate_pipeline_error: Optional[str] = None,
+    export_video: bool = True,
 ) -> None:
     """
     Executes the generation stages asynchronously.
@@ -104,13 +105,20 @@ def execute_lesson_generation(
             lesson_id=lesson_id,
             status="running",
             stage="generating_notes",
-            progress_percent=88,
+            progress_percent=80,
             message="Generating structured study notes...",
         )
         notes = generate_study_notes(
             lesson=translated_plan,
             manifest=manifest,
             fallback_used=overall_fallback,
+        )
+
+        notes_file = out_base / "lesson-notes.json"
+        import json
+        notes_file.write_text(
+            json.dumps(notes.model_dump(), indent=2, ensure_ascii=False),
+            encoding="utf-8",
         )
 
         # ---------------------------------------------------------
@@ -122,6 +130,36 @@ def execute_lesson_generation(
             source_language="en",
         )
 
+        # ---------------------------------------------------------
+        # Stage 6: Video & Subtitle Export (Phase 2C)
+        # ---------------------------------------------------------
+        video_path_str = None
+        subtitles_path_str = None
+
+        if export_video:
+            from backend.app.services.export.video_exporter import export_lesson_video
+
+            def handle_export_progress(pct: int, msg: str):
+                stg = "rendering" if pct < 93 else "exporting"
+                job_manager.update_status(
+                    lesson_id=lesson_id,
+                    status="running",
+                    stage=stg,
+                    progress_percent=pct,
+                    message=msg,
+                )
+
+            artifacts = export_lesson_video(
+                lesson_id=lesson_id,
+                canonical_plan=canonical_plan,
+                audio_manifest=manifest,
+                output_dir=out_base,
+                notes_path=notes_file,
+                on_progress=handle_export_progress,
+            )
+            video_path_str = str(artifacts.video_path)
+            subtitles_path_str = str(artifacts.subtitles_path)
+
         # Attach artifacts and complete
         job_manager.set_result(
             lesson_id=lesson_id,
@@ -129,6 +167,9 @@ def execute_lesson_generation(
             canonical_plan=canonical_plan,
             audio_manifest=manifest,
             study_notes=notes,
+            video_path=video_path_str,
+            notes_path=str(notes_file),
+            subtitles_path=subtitles_path_str,
         )
 
         warnings = []

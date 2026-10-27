@@ -49,6 +49,9 @@ class JobRecord:
     provisional_plan: Optional[ProvisionalLessonPlan] = None
     audio_manifest: Optional[AudioManifest] = None
     study_notes: Optional[LessonNotes] = None
+    video_path: Optional[str] = None
+    notes_path: Optional[str] = None
+    subtitles_path: Optional[str] = None
 
     def to_status_response(self) -> JobStatusResponse:
         return JobStatusResponse(
@@ -163,6 +166,9 @@ class JobManager:
         canonical_plan: Optional[CanonicalLessonPlan] = None,
         audio_manifest: Optional[AudioManifest] = None,
         study_notes: Optional[LessonNotes] = None,
+        video_path: Optional[str] = None,
+        notes_path: Optional[str] = None,
+        subtitles_path: Optional[str] = None,
     ) -> JobRecord:
         """
         Attaches finished generation artifacts to the job.
@@ -180,6 +186,12 @@ class JobManager:
                 job.audio_manifest = audio_manifest
             if study_notes is not None:
                 job.study_notes = study_notes
+            if video_path is not None:
+                job.video_path = video_path
+            if notes_path is not None:
+                job.notes_path = notes_path
+            if subtitles_path is not None:
+                job.subtitles_path = subtitles_path
 
             job.updated_at = time.time()
             return job
