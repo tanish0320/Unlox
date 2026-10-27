@@ -19,8 +19,29 @@ export interface RenderContext {
   nearNPC?: NPCState | null;
 }
 
-export function getCameraZoom(roomId: RoomId): number {
-  return roomId === "corridor" ? 1.3 : 1.45;
+export function getCameraZoom(
+  roomId: RoomId,
+  canvasWidth?: number,
+  canvasHeight?: number
+): number {
+  if (!canvasWidth || !canvasHeight) {
+    return roomId === "corridor" ? 1.3 : 1.45;
+  }
+  if (roomId === "corridor") {
+    // Grand Hallway (26x18 tiles): Fit screen width on widescreen displays,
+    // allowing vertical scrolling to track player between North and South wings without letterboxing.
+    const scaleW = canvasWidth / (26 * TILE_SIZE);
+    const scaleH = canvasHeight / (18 * TILE_SIZE);
+    const targetZoom = Math.max(scaleW, scaleH * 0.95);
+    return Math.max(1.15, Math.min(2.8, targetZoom));
+  } else {
+    // Classrooms (20x14 tiles): Comfortably frame the room inside the viewport
+    // with neat margins on all sides so all walls and furniture are fully visible.
+    const scaleW = canvasWidth / (20 * TILE_SIZE);
+    const scaleH = canvasHeight / (14 * TILE_SIZE);
+    const fitZoom = Math.min(scaleW * 0.95, scaleH * 0.92);
+    return Math.max(1.2, Math.min(2.6, fitZoom));
+  }
 }
 
 export function getCameraTransform(
@@ -29,7 +50,7 @@ export function getCameraTransform(
   canvasWidth: number,
   canvasHeight: number
 ): { camX: number; camY: number; zoom: number } {
-  const zoom = getCameraZoom(room.id);
+  const zoom = getCameraZoom(room.id, canvasWidth, canvasHeight);
   const roomScreenW = room.gridWidth * TILE_SIZE * zoom;
   const roomScreenH = room.gridHeight * TILE_SIZE * zoom;
 

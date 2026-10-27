@@ -86,13 +86,15 @@ export const BluAcademyView: React.FC<BluAcademyViewProps> = ({
 
   return (
     <div
+      data-testid="blu-academy-root"
       style={{
         position: "relative",
         width: "100%",
+        height: "100%",
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
+        overflow: "hidden",
+        backgroundColor: "#080C16",
       }}
     >
       {/* Game HUD (Top overlay) */}
@@ -105,13 +107,23 @@ export const BluAcademyView: React.FC<BluAcademyViewProps> = ({
       />
 
       {/* 2D Canvas Viewport */}
-      <GameCanvas
-        currentRoom={currentRoom}
-        spawnPosition={spawnPosition}
-        onRoomChange={handleRoomChange}
-        onInteractTeacher={(teacher) => setActiveTeacher(teacher)}
-        isPaused={isModalOpen}
-      />
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          height: "100%",
+          flex: 1,
+          overflow: "hidden",
+        }}
+      >
+        <GameCanvas
+          currentRoom={currentRoom}
+          spawnPosition={spawnPosition}
+          onRoomChange={handleRoomChange}
+          onInteractTeacher={(teacher) => setActiveTeacher(teacher)}
+          isPaused={isModalOpen}
+        />
+      </div>
 
       {/* Achievement Unlocked Notification Toast */}
       {recentNotification && (

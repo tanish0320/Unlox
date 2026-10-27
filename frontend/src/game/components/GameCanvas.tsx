@@ -22,6 +22,42 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   isPaused,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const [dimensions, setDimensions] = useState<{ width: number; height: number }>({
+    width: typeof window !== "undefined" ? window.innerWidth : 1280,
+    height: typeof window !== "undefined" ? window.innerHeight : 720,
+  });
+
+  // Track parent container resize to keep canvas buffer matching screen dimensions
+  useEffect(() => {
+    const updateSize = () => {
+      const container = containerRef.current;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const w = Math.floor(rect.width || window.innerWidth || 1280);
+      const h = Math.floor(rect.height || window.innerHeight || 720);
+      if (w > 0 && h > 0) {
+        setDimensions((prev) => (prev.width === w && prev.height === h ? prev : { width: w, height: h }));
+      }
+    };
+
+    updateSize();
+
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined" && containerRef.current) {
+      resizeObserver = new ResizeObserver(() => {
+        updateSize();
+      });
+      resizeObserver.observe(containerRef.current);
+    }
+
+    window.addEventListener("resize", updateSize);
+    return () => {
+      if (resizeObserver) resizeObserver.disconnect();
+      window.removeEventListener("resize", updateSize);
+    };
+  }, []);
 
   const getSafeDefaultSpawn = (room: ClassroomDef): Position => {
     if (room.id === "corridor") return { x: 13, y: 9 };
@@ -312,23 +348,19 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
   return (
     <div
+      ref={containerRef}
       style={{
         position: "relative",
         width: "100%",
-        maxWidth: 1280,
-        aspectRatio: "16 / 9",
-        backgroundColor: "#0B1020",
-        borderRadius: 16,
+        height: "100%",
+        backgroundColor: "#080C16",
         overflow: "hidden",
-        boxShadow: "0 25px 60px -15px rgba(0, 0, 0, 0.5)",
-        border: "3px solid #234E3C",
-        margin: "0 auto",
       }}
     >
       <canvas
         ref={canvasRef}
-        width={1280}
-        height={720}
+        width={dimensions.width}
+        height={dimensions.height}
         onClick={handleCanvasClick}
         tabIndex={0}
         style={{

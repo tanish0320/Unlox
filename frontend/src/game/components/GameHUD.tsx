@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ClassroomDef, RoomId, StudentProgress } from "../types";
 import { CLASSROOMS } from "../data/classrooms";
 
@@ -18,6 +18,29 @@ export const GameHUD: React.FC<GameHUDProps> = ({
   onExitGame,
 }) => {
   const [showFastTravel, setShowFastTravel] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(() => {
+    return typeof document !== "undefined" ? Boolean(document.fullscreenElement) : false;
+  });
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener("fullscreenchange", handleFsChange);
+    return () => document.removeEventListener("fullscreenchange", handleFsChange);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      } else if (document.exitFullscreen) {
+        await document.exitFullscreen();
+      }
+    } catch (err) {
+      console.warn("Fullscreen request not permitted or unsupported:", err);
+    }
+  };
 
   const xpPercent = Math.min(100, Math.round((progress.currentXP / progress.nextLevelXP) * 100));
 
@@ -250,6 +273,30 @@ export const GameHUD: React.FC<GameHUDProps> = ({
             <span>{progress.unlockedBadges.length}/9</span>
           </div>
         </div>
+
+        {/* Native Fullscreen Toggle Button */}
+        <button
+          onClick={toggleFullscreen}
+          title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+          style={{
+            backgroundColor: "rgba(30, 41, 59, 0.88)",
+            border: "1px solid rgba(255, 255, 255, 0.2)",
+            color: "#F8FAFC",
+            padding: "8px 14px",
+            borderRadius: 12,
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            backdropFilter: "blur(6px)",
+            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.25)",
+          }}
+        >
+          <span style={{ fontSize: 13 }}>{isFullscreen ? "⤢" : "⛶"}</span>
+          <span>{isFullscreen ? "Windowed" : "Fullscreen"}</span>
+        </button>
 
         {/* Exit to Studio Button */}
         <button

@@ -289,6 +289,33 @@ export const App: React.FC = () => {
 
   return (
     <div className="bvt-app-container">
+      {/* Full-viewport Blu Academy Game Experience */}
+      {activeView === "academy" && (
+        <div
+          data-testid="blu-academy-fullscreen-root"
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: "100vw",
+            height: "100vh",
+            minHeight: "100dvh",
+            zIndex: 1000,
+            overflow: "hidden",
+            backgroundColor: "#080C16",
+          }}
+        >
+          <BluAcademyView
+            onLaunchLesson={handleLaunchFromGame}
+            onExitGame={() => setActiveView("studio")}
+            completedLessonInfo={completedLessonInfo}
+            onClearCompletedLesson={() => setCompletedLessonInfo(null)}
+          />
+        </div>
+      )}
+
       {/* Top Navigation Bar */}
       <header className="bvt-header">
         <div className="bvt-logo-group">
@@ -424,21 +451,9 @@ export const App: React.FC = () => {
         </aside>
 
         {/* Content Area */}
-        <main
-          className="bvt-main-content"
-          style={activeView === "academy" ? { display: "block", padding: "24px 32px" } : undefined}
-        >
-          {activeView === "academy" ? (
-            <BluAcademyView
-              onLaunchLesson={handleLaunchFromGame}
-              onExitGame={() => setActiveView("studio")}
-              completedLessonInfo={completedLessonInfo}
-              onClearCompletedLesson={() => setCompletedLessonInfo(null)}
-            />
-          ) : (
-            <>
-              {/* Form & Steps Column */}
-              <section>
+        <main className="bvt-main-content">
+          {/* Form & Steps Column */}
+          <section>
                 <div className="bvt-hero-header">
                   <div className="bvt-eyebrow">A little curiosity goes a long way</div>
                   <h2 className="bvt-main-heading">Turn any topic into an offline lesson</h2>
@@ -945,8 +960,6 @@ export const App: React.FC = () => {
               </div>
             )}
           </section>
-            </>
-          )}
         </main>
       </div>
     </div>

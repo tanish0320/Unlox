@@ -466,22 +466,70 @@ describe("Blu Academy — NPC Population, Scaling & Signage Polish Suite", () =>
   });
 
   it("applies camera zoom and scaling without distorting coordinate mapping", () => {
+    // Default fallback zoom without dimensions
     expect(getCameraZoom("corridor")).toBe(1.3);
     expect(getCameraZoom("maths")).toBe(1.45);
     expect(getCameraZoom("cs")).toBe(1.45);
 
-    // Corridor camera transform at center (13, 9)
+    // Corridor camera transform at 1280x720 (center spawn x: 13, y: 9)
     const corridorTransform = getCameraTransform(corridor, { x: 13, y: 9 }, 1280, 720);
-    expect(corridorTransform.zoom).toBe(1.3);
-    // When room is narrower than canvas, camX centers the room: (1081.6 - 1280) / 2 = -99.2
-    expect(corridorTransform.camX).toBeCloseTo((corridor.gridWidth * 32 * 1.3 - 1280) / 2, 1);
+    expect(corridorTransform.zoom).toBeCloseTo(1280 / (corridor.gridWidth * 32), 2);
+    // Hallway width matches canvas width exactly at 1280x720
+    expect(corridor.gridWidth * 32 * corridorTransform.zoom).toBeCloseTo(1280, 1);
+    expect(corridorTransform.camX).toBeCloseTo(0, 1);
 
-    // Classroom camera transform at spawn (9.5, 11.0)
+    // Classroom camera transform at 1280x720 (spawn x: 9.5, y: 11.0)
     const mathsTransform = getCameraTransform(CLASSROOMS.maths, { x: 9.5, y: 11.0 }, 1280, 720);
-    expect(mathsTransform.zoom).toBe(1.45);
-    // Classroom is centered in canvas: (928 - 1280) / 2 = -176
-    expect(mathsTransform.camX).toBeCloseTo((CLASSROOMS.maths.gridWidth * 32 * 1.45 - 1280) / 2, 1);
-    expect(mathsTransform.camY).toBeCloseTo((CLASSROOMS.maths.gridHeight * 32 * 1.45 - 720) / 2, 1);
+    const roomScreenW = CLASSROOMS.maths.gridWidth * 32 * mathsTransform.zoom;
+    const roomScreenH = CLASSROOMS.maths.gridHeight * 32 * mathsTransform.zoom;
+    expect(roomScreenW).toBeLessThanOrEqual(1280);
+    expect(roomScreenH).toBeLessThanOrEqual(720);
+    // Classroom is centered in canvas: (roomScreenW - 1280) / 2
+    expect(mathsTransform.camX).toBeCloseTo((roomScreenW - 1280) / 2, 1);
+    expect(mathsTransform.camY).toBeCloseTo((roomScreenH - 720) / 2, 1);
+  });
+
+  it("handles responsive full-screen scaling across standard desktop resolutions (1366x768, 1280x720, 1920x1080, 1024x768)", () => {
+    const resolutions = [
+      { w: 1366, h: 768, name: "1366x768 (Low-spec Laptop)" },
+      { w: 1280, h: 720, name: "1280x720 (Standard HD)" },
+      { w: 1920, h: 1080, name: "1920x1080 (Full HD)" },
+      { w: 1024, h: 768, name: "1024x768 (Compact / 4:3)" },
+    ];
+
+    for (const res of resolutions) {
+      // 1. Verify Grand Hallway fills viewport width or height without letterbox gaps
+      const hallwayT = getCameraTransform(corridor, { x: 13, y: 9 }, res.w, res.h);
+      const hallwayScreenW = corridor.gridWidth * 32 * hallwayT.zoom;
+      const hallwayScreenH = corridor.gridHeight * 32 * hallwayT.zoom;
+      expect(hallwayScreenW >= res.w * 0.99 || hallwayScreenH >= res.h * 0.99).toBe(true);
+
+      // Verify coordinate round-trip from screen click to world tile and back
+      const testClickX = res.w * 0.6;
+      const testClickY = res.h * 0.4;
+      const worldX = (testClickX + hallwayT.camX) / (32 * hallwayT.zoom);
+      const worldY = (testClickY + hallwayT.camY) / (32 * hallwayT.zoom);
+      const reconstructedX = worldX * 32 * hallwayT.zoom - hallwayT.camX;
+      const reconstructedY = worldY * 32 * hallwayT.zoom - hallwayT.camY;
+      expect(reconstructedX).toBeCloseTo(testClickX, 3);
+      expect(reconstructedY).toBeCloseTo(testClickY, 3);
+
+      // 2. Verify all six classrooms fit comfortably inside the viewport and are centered
+      for (const roomId of roomIds) {
+        const room = CLASSROOMS[roomId];
+        const roomT = getCameraTransform(room, { x: 9.5, y: 11.0 }, res.w, res.h);
+        const screenW = room.gridWidth * 32 * roomT.zoom;
+        const screenH = room.gridHeight * 32 * roomT.zoom;
+
+        // Must fit inside canvas boundaries
+        expect(screenW).toBeLessThanOrEqual(res.w + 1);
+        expect(screenH).toBeLessThanOrEqual(res.h + 1);
+
+        // Must be properly centered
+        expect(roomT.camX).toBeCloseTo((screenW - res.w) / 2, 1);
+        expect(roomT.camY).toBeCloseTo((screenH - res.h) / 2, 1);
+      }
+    }
   });
 
   it("guarantees classroom signboards fit completely inside viewport without edge clipping", () => {
