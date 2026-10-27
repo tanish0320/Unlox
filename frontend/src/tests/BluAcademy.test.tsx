@@ -10,9 +10,9 @@ import { DialogueOverlay } from "../game/components/DialogueOverlay";
 import { QuizModal } from "../game/components/QuizModal";
 import { GameHUD } from "../game/components/GameHUD";
 import { GameLaunchPayload, TeacherDef } from "../game/types";
-import { HALLWAY_NPCS, CLASSROOM_NPCS, getRoomNPCs } from "../game/data/npcDefinitions";
+import { HALLWAY_NPCS, CLASSROOM_NPCS } from "../game/data/npcDefinitions";
 import { NPCManager } from "../game/engine/NPCManager";
-import { getCameraTransform, getCameraZoom } from "../game/engine/PixelRenderer";
+import { PixelRenderer, getCameraTransform, getCameraZoom } from "../game/engine/PixelRenderer";
 
 describe("Blu Academy — Collision & Map Navigation System", () => {
   const corridor = CLASSROOMS.corridor;
@@ -618,5 +618,125 @@ describe("Blu Academy — NPC Population, Scaling & Signage Polish Suite", () =>
     }
   });
 });
+
+describe("Blu Academy — Interaction Prompt Dynamic Sizing & Overflow Prevention", () => {
+  const corridor = CLASSROOMS.corridor;
+  const standardViewports = [
+    { w: 1366, h: 708, name: "1366x768" },
+    { w: 1280, h: 660, name: "1280x720" },
+    { w: 1920, h: 1020, name: "1920x1080" },
+    { w: 1024, h: 708, name: "1024x768" },
+  ];
+
+  it("dynamically sizes prompt and prevents overflow for all six classroom hallway doors", () => {
+    // Realistic canvas text measurement simulator for bold 9.5px sans-serif (~6.2px average char width)
+    const mockMeasure = (str: string) => str.length * 6.2;
+
+    for (const door of corridor.doors) {
+      const signCenterX = (door.triggerArea.x + door.triggerArea.width / 2) * 32;
+      const layout = PixelRenderer.calculateDoorPromptLayout(door, corridor, signCenterX, mockMeasure);
+
+      // 1. Text breathing room: prompt width must accommodate every line plus padding
+      for (const line of layout.lines) {
+        const textW = mockMeasure(line);
+        expect(layout.promptW).toBeGreaterThanOrEqual(textW + 20);
+      }
+
+      // 2. Height accommodates line count without squeezing
+      if (layout.lines.length === 1) {
+        expect(layout.promptH).toBe(22);
+      } else {
+        expect(layout.promptH).toBe(36);
+        // Verify line 1 is key guidance and line 2 is room title
+        expect(layout.lines[0]).toMatch(/(\[W\] or \[↑\]|\[S\] or \[↓\]) Enter/);
+        expect(layout.lines[1].length).toBeGreaterThan(0);
+      }
+
+      // 3. Prompt stays within room boundaries
+      expect(layout.promptX).toBeGreaterThanOrEqual(8);
+      expect(layout.promptX + layout.promptW).toBeLessThanOrEqual(corridor.gridWidth * 32 - 8);
+      expect(layout.promptY).toBeGreaterThanOrEqual(6);
+      expect(layout.promptY + layout.promptH).toBeLessThanOrEqual(corridor.gridHeight * 32 - 6);
+    }
+  });
+
+  it("properly splits PHYSICS OBSERVATORY across two lines to guarantee clean readability", () => {
+    const physicsDoor = corridor.doors.find((d) => d.targetRoom === "physics")!;
+    expect(physicsDoor).toBeDefined();
+
+    const signCenterX = (physicsDoor.triggerArea.x + physicsDoor.triggerArea.width / 2) * 32;
+    const layout = PixelRenderer.calculateDoorPromptLayout(physicsDoor, corridor, signCenterX);
+
+    expect(layout.lines).toEqual(["[W] or [↑] Enter", "PHYSICS OBSERVATORY"]);
+    expect(layout.promptH).toBe(36);
+    expect(layout.promptW).toBeGreaterThanOrEqual(140);
+    expect(layout.accentColor).toBe("#8B5CF6");
+  });
+
+  it("correctly positions exit prompts inside all classrooms without clipping or negative Y coordinates", () => {
+    const roomKeys: Array<keyof typeof CLASSROOMS> = [
+      "maths",
+      "cs",
+      "physics",
+      "chemistry",
+      "biology",
+      "social",
+    ];
+
+    for (const rKey of roomKeys) {
+      const room = CLASSROOMS[rKey];
+      for (const door of room.doors) {
+        const signCenterX = (door.triggerArea.x + door.triggerArea.width / 2) * 32;
+        const layout = PixelRenderer.calculateDoorPromptLayout(door, room, signCenterX);
+
+        // Lines should guide returning to hallway
+        expect(layout.lines).toEqual(["[Step Through]", "Return to Hallway"]);
+        expect(layout.promptH).toBe(36);
+
+        // Crucial bug fix check: promptY must NEVER be negative (clipping top wall)
+        expect(layout.promptY).toBeGreaterThanOrEqual(6);
+        expect(layout.promptY + layout.promptH).toBeLessThanOrEqual(room.gridHeight * 32 - 6);
+
+        // Prompt X within room bounds
+        expect(layout.promptX).toBeGreaterThanOrEqual(8);
+        expect(layout.promptX + layout.promptW).toBeLessThanOrEqual(room.gridWidth * 32 - 8);
+      }
+    }
+  });
+
+  it("guarantees prompt stays fully within viewport bounds across all desktop resolutions", () => {
+    for (const vp of standardViewports) {
+      for (const door of corridor.doors) {
+        const signCenterX = (door.triggerArea.x + door.triggerArea.width / 2) * 32;
+        // Camera positioned near this door
+        const playerPos = {
+          x: door.triggerArea.x + door.triggerArea.width / 2,
+          y: door.triggerArea.y < 5 ? 2.5 : 14.5,
+        };
+        const cam = getCameraTransform(corridor, playerPos, vp.w, vp.h);
+        const layout = PixelRenderer.calculateDoorPromptLayout(
+          door,
+          corridor,
+          signCenterX,
+          undefined,
+          { camX: cam.camX, camY: cam.camY, zoom: cam.zoom, canvasWidth: vp.w, canvasHeight: vp.h }
+        );
+
+        // Convert world coordinates to screen pixels
+        const screenX = layout.promptX * cam.zoom - cam.camX;
+        const screenRight = (layout.promptX + layout.promptW) * cam.zoom - cam.camX;
+        const screenY = layout.promptY * cam.zoom - cam.camY;
+        const screenBottom = (layout.promptY + layout.promptH) * cam.zoom - cam.camY;
+
+        // Prompt must be within visible screen (with 4px margin of tolerance for rounding)
+        expect(screenX).toBeGreaterThanOrEqual(-4);
+        expect(screenRight).toBeLessThanOrEqual(vp.w + 4);
+        expect(screenY).toBeGreaterThanOrEqual(-4);
+        expect(screenBottom).toBeLessThanOrEqual(vp.h + 4);
+      }
+    }
+  });
+});
+
 
 
