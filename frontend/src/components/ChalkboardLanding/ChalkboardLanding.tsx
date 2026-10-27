@@ -40,14 +40,9 @@ export const ChalkboardLanding: React.FC<ChalkboardLandingProps> = ({
     engineRef.current = engine
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Escape' || e.code === 'KeyS') {
+      if (e.code === 'Escape' || e.code === 'KeyS' || e.code === 'Space' || e.code === 'Enter') {
         e.preventDefault()
         handleSkip()
-      } else if (e.code === 'Space' || e.code === 'ArrowRight' || e.code === 'Enter') {
-        e.preventDefault()
-        if (engineRef.current) {
-          engineRef.current.disintegrateIntoPowder()
-        }
       } else if (e.code === 'KeyM') {
         if (engineRef.current) {
           engineRef.current.audio.toggleSound()
@@ -66,21 +61,17 @@ export const ChalkboardLanding: React.FC<ChalkboardLandingProps> = ({
     }
   }, [handleSkip])
 
-  const handleBoardClick = () => {
-    if (isFadingOut) return
-    if (engineRef.current) {
-      if (engineRef.current.state === 'HOLDING' || engineRef.current.state === 'WRITING') {
-        engineRef.current.disintegrateIntoPowder()
-      }
-    }
+  const handleTapToSkip = () => {
+    handleSkip()
   }
 
   return (
     <div
       className={`chalkboard-landing-root ${isFadingOut ? 'fading-out' : ''} ${className}`}
-      onClick={handleBoardClick}
+      onClick={handleTapToSkip}
+      onTouchEnd={handleTapToSkip}
       role="region"
-      aria-label="Chalkboard multilingual greeting transition"
+      aria-label="Chalkboard multilingual greeting transition - tap anywhere to skip"
     >
       <div className="chalkboard-frame">
         {/* Brass Screws */}
@@ -96,37 +87,6 @@ export const ChalkboardLanding: React.FC<ChalkboardLandingProps> = ({
 
           {/* Canvas Engine Container */}
           <div ref={containerRef} className="chalkboard-canvas-holder" />
-
-          {/* Skip Button Option */}
-          {showSkipButton && (
-            <button
-              type="button"
-              className="chalkboard-skip-btn"
-              onClick={(e) => {
-                e.stopPropagation()
-                handleSkip()
-              }}
-              aria-label="Skip chalkboard intro"
-              title="Skip intro and open Blu Visual Teacher"
-            >
-              <span>Skip</span>
-              <span className="chalkboard-skip-hint">[Esc]</span>
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <polygon points="5 4 15 12 5 20 5 4" />
-                <line x1="19" y1="5" x2="19" y2="19" />
-              </svg>
-            </button>
-          )}
 
           {/* Bottom Wooden Chalk Tray */}
           <div className="chalkboard-tray" aria-hidden="true">

@@ -7,36 +7,45 @@ describe('ChalkboardLanding Component', () => {
     vi.clearAllMocks()
   })
 
-  it('renders the chalkboard container with accessible region label', () => {
+  it('renders the plain chalkboard container with accessible region label', () => {
     render(<ChalkboardLanding />)
     const region = screen.getByRole('region', { name: /chalkboard multilingual greeting transition/i })
     expect(region).toBeDefined()
   })
 
-  it('renders the Skip button with accessible hint', () => {
-    render(<ChalkboardLanding showSkipButton={true} />)
-    const skipBtn = screen.getByRole('button', { name: /skip chalkboard intro/i })
-    expect(skipBtn).toBeDefined()
-    expect(skipBtn.textContent).toContain('Skip')
+  it('does not render any visible skip button', () => {
+    render(<ChalkboardLanding />)
+    const skipBtn = screen.queryByRole('button', { name: /skip/i })
+    expect(skipBtn).toBeNull()
   })
 
-  it('triggers onSkip when Skip button is clicked', async () => {
+  it('triggers onSkip when tapping / clicking anywhere on the chalkboard', async () => {
     const onSkipMock = vi.fn()
     render(<ChalkboardLanding onSkip={onSkipMock} />)
 
-    const skipBtn = screen.getByRole('button', { name: /skip chalkboard intro/i })
-    fireEvent.click(skipBtn)
+    const region = screen.getByRole('region', { name: /chalkboard multilingual greeting transition/i })
+    fireEvent.click(region)
 
     // Component fades out before calling onSkip
     await new Promise((resolve) => setTimeout(resolve, 450))
     expect(onSkipMock).toHaveBeenCalledTimes(1)
   })
 
-  it('triggers onSkip when Escape key is pressed', async () => {
+  it('triggers onSkip when pressing Escape key', async () => {
     const onSkipMock = vi.fn()
     render(<ChalkboardLanding onSkip={onSkipMock} />)
 
     fireEvent.keyDown(window, { code: 'Escape' })
+
+    await new Promise((resolve) => setTimeout(resolve, 450))
+    expect(onSkipMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('triggers onSkip when pressing Space key', async () => {
+    const onSkipMock = vi.fn()
+    render(<ChalkboardLanding onSkip={onSkipMock} />)
+
+    fireEvent.keyDown(window, { code: 'Space' })
 
     await new Promise((resolve) => setTimeout(resolve, 450))
     expect(onSkipMock).toHaveBeenCalledTimes(1)
