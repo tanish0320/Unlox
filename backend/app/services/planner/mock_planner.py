@@ -63,14 +63,47 @@ class MockLessonPlanner:
 
         # Generate a standard mock lesson structured around the requested topic
         # Uses the canonical 3-scene structure
-        lesson_data = {
-            "schema_version": "1.0.0",
-            "title": f"Understanding {topic}",
-            "topic": topic,
-            "level": level if level in ["beginner", "intermediate"] else "beginner",
-            "language": language,
-            "target_duration_seconds": target_duration_seconds,
-            "scenes": [
+        topic_lower = topic.lower()
+        if "ratio" in topic_lower or "proportion" in topic_lower:
+            scenes = [
+                {
+                    "id": "scene_01",
+                    "type": "title_card",
+                    "heading": f"Introduction to {topic}",
+                    "subtitle": f"Comparing quantities for {level} learners",
+                    "key_points": [
+                        "What is a ratio?",
+                        "Understanding proportions (a:b = c:d)",
+                        "Real-world problem solving",
+                    ],
+                    "narration": f"Welcome to this lesson on {topic}. A ratio compares two quantities by division, while a proportion states that two ratios are equal.",
+                },
+                {
+                    "id": "scene_02",
+                    "type": "code_walkthrough",
+                    "heading": "Step 1: Calculating and Simplifying Ratios",
+                    "code": "# Python example: Simplifying a ratio\nimport math\na, b = 12, 16\ngcd = math.gcd(a, b)\nprint(f'Simplified ratio: {a // gcd}:{b // gcd}')",
+                    "code_language": "python",
+                    "highlight_lines": [4, 5],
+                    "expected_output": "Simplified ratio: 3:4",
+                    "narration": "In code, we can simplify a ratio by dividing both numbers by their greatest common divisor.",
+                },
+                {
+                    "id": "scene_03",
+                    "type": "diagram",
+                    "heading": "Step 2: Proportional Scaling",
+                    "items": [
+                        "Base Ratio (3:4)",
+                        "Multiply by Factor 2",
+                        "Scaled Proportion (6:8)",
+                        "Constant Relationship",
+                    ],
+                    "layout": "horizontal",
+                    "narration": "A proportion means the relationship remains constant as quantities scale up or down proportionally.",
+                },
+            ]
+        else:
+            scenes = [
                 {
                     "id": "scene_01",
                     "type": "title_card",
@@ -86,12 +119,12 @@ class MockLessonPlanner:
                 {
                     "id": "scene_02",
                     "type": "code_walkthrough",
-                    "heading": "Step 1: Code in Action",
-                    "code": "# Python example\nvalue = 42\nprint(f'Value: {value}')",
+                    "heading": f"Step 1: Implementing {topic}",
+                    "code": f"# Python example for {topic}\nval = 42\nprint('Concept: ' + str(val))",
                     "code_language": "python",
                     "highlight_lines": [2, 3],
-                    "expected_output": "Value: 42",
-                    "narration": "Notice how the variable is initialized first, and then printed cleanly to stdout.",
+                    "expected_output": "Concept: 42",
+                    "narration": f"Here is how the core logic of {topic} operates in practical execution.",
                 },
                 {
                     "id": "scene_03",
@@ -105,7 +138,16 @@ class MockLessonPlanner:
                     "layout": "horizontal",
                     "narration": "The diagram displays how execution advances sequentially from evaluation to output.",
                 },
-            ],
+            ]
+
+        lesson_data = {
+            "schema_version": "1.0.0",
+            "title": f"Understanding {topic}",
+            "topic": topic,
+            "level": level if level in ["beginner", "intermediate"] else "beginner",
+            "language": language,
+            "target_duration_seconds": target_duration_seconds,
+            "scenes": scenes,
         }
 
         try:

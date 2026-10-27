@@ -85,11 +85,29 @@ class LessonPlan(BaseModel):
     language: str = Field(
         default="en", description="Target ISO-639-1 language code (e.g., 'en', 'hi', 'ta', 'te')"
     )
+    source_language: str = Field(
+        default="en", description="Source ISO-639-1 language code (e.g., 'en')"
+    )
     target_duration_seconds: Optional[int] = Field(
         default=60, ge=30, le=120, description="Requested target duration hint (30-120s)"
     )
     scenes: List[SceneVariant] = Field(
         ..., min_length=3, max_length=6, description="Sequence of 3 to 6 animated scenes"
+    )
+    summary: Optional[str] = Field(
+        default=None, description="Concise educational summary of the lesson"
+    )
+    learning_objectives: Optional[List[str]] = Field(
+        default=None, description="Key learning outcomes for the student"
+    )
+    key_takeaways: Optional[List[str]] = Field(
+        default=None, description="Core revision takeaways"
+    )
+    glossary: Optional[List[dict]] = Field(
+        default=None, description="Key terminology definitions [{'term': ..., 'definition': ...}]"
+    )
+    revision_questions: Optional[List[dict]] = Field(
+        default=None, description="Review questions and answers [{'question': ..., 'answer': ...}]"
     )
 
     @field_validator("scenes")

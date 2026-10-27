@@ -1,0 +1,219 @@
+import json
+from pathlib import Path
+from fastapi.testclient import TestClient
+from backend.app.main import app
+
+client = TestClient(app)
+
+def test_api_health():
+    res = client.get("/api/health")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "healthy"
+    assert data["offline"] is True
+    assert data["ffmpeg_available"] is True
+
+def test_api_sample_fixture():
+    res = client.get("/api/lessons/fixtures/sample")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["lesson_id"] == "sample_en"
+    assert "lesson_plan" in data
+    assert "audio_manifest" in data
+    assert len(data["lesson_plan"]["scenes"]) == 3
+    # Check browser accessible audio url
+    first_entry = data["audio_manifest"]["entries"][0]
+    assert first_entry["audio_file"].startswith("/api/audio/")
+
+def test_api_sample_audio_serving():
+    res = client.get("/api/audio/fixtures/en/scene_01_en.wav")
+    assert res.status_code == 200
+    assert res.headers["content-type"] == "audio/wav"
+    assert len(res.content) > 10000
+
+def test_api_sample_video_serving():
+    res = client.get("/api/lessons/sample_en/video")
+    assert res.status_code == 200
+    assert res.headers["content-type"] == "video/mp4"
+    assert len(res.content) > 10000
+
+def test_api_sample_captions_serving():
+    res = client.get("/api/lessons/sample_en/captions")
+    assert res.status_code == 200
+    assert len(res.content) > 50
+    assert b"-->" in res.content
+
+def test_export_mp4_generation_and_verification():
+    from backend.app.services.exporter.video_exporter import (
+        export_mp4_video,
+        generate_srt_file,
+        verify_video_file,
+        find_ffmpeg_binaries,
+    )
+    from backend.app.schemas.provisional_lesson import LessonPlan
+    from backend.app.schemas.audio_manifest import AudioManifest
+
+    ffmpeg_p, _ = find_ffmpeg_binaries()
+    assert ffmpeg_p is not None, "FFmpeg binary must exist"
+
+    root = Path(__file__).resolve().parent.parent
+    en_dir = root / "outputs" / "integration_fixtures" / "en"
+
+    lesson = LessonPlan(**json.loads((en_dir / "lesson_plan.json").read_text(encoding="utf-8")))
+    manifest = AudioManifest(**json.loads((en_dir / "audio_manifest.json").read_text(encoding="utf-8")))
+
+    tmp_out = root / "outputs" / "test_run" / "test_unit.mp4"
+    tmp_srt = root / "outputs" / "test_run" / "test_unit.srt"
+
+    generate_srt_file(manifest, tmp_srt)
+    assert tmp_srt.is_file() and tmp_srt.stat().st_size > 0
+
+    export_mp4_video(lesson, manifest, root, tmp_out, fps=25)
+    assert tmp_out.is_file() and tmp_out.stat().st_size > 0
+
+    verification = verify_video_file(tmp_out)
+    assert verification["valid"] is True
+    assert verification["is_h264"] is True
+    assert verification["is_1280x720"] is True
+
+
+def test_planner_return_contracts_unpacking():
+    """Regression test ensuring planner return tuple contracts are unpacked without AttributeError."""
+    from backend.app.services.planner.ollama_planner import OllamaLessonPlanner
+    from backend.app.services.planner.mock_planner import MockLessonPlanner
+    from backend.app.schemas.provisional_lesson import LessonPlan
+
+    # Ollama returns 3-tuple: (LessonPlan, fallback_used, error_reason)
+    ollama_planner = OllamaLessonPlanner()
+    ollama_res = ollama_planner.plan_lesson(topic="Explain Ratio and proportion")
+    assert isinstance(ollama_res, tuple)
+    assert len(ollama_res) == 3
+    plan_ollama, fallback_used, err = ollama_res
+    assert isinstance(plan_ollama, LessonPlan)
+    assert hasattr(plan_ollama, "scenes")
+    assert len(plan_ollama.scenes) >= 3
+
+    # Mock planner returns 2-tuple: (LessonPlan, fallback_used)
+    mock_planner = MockLessonPlanner()
+    mock_res = mock_planner.plan_lesson(topic="Explain Ratio and proportion")
+    assert isinstance(mock_res, tuple)
+    assert len(mock_res) == 2
+    plan_mock, mock_fallback = mock_res
+    assert isinstance(plan_mock, LessonPlan)
+    assert hasattr(plan_mock, "scenes")
+    assert len(plan_mock.scenes) >= 3
+
+
+def test_generate_ratio_and_proportion_pipeline():
+    """Regression test for 'Explain Ratio and proportion' lesson generation pipeline."""
+    from backend.app.main import run_lesson_pipeline, JOB_STORE, LESSON_STORE, MANIFEST_STORE, GenerateRequest
+    import uuid
+
+    job_id = f"test_{uuid.uuid4().hex[:6]}"
+    lesson_id = f"lesson_{job_id}"
+    req = GenerateRequest(
+        topic="Explain Ratio and proportion",
+        level="beginner",
+        language="en",
+        target_duration_seconds=45,
+    )
+
+    JOB_STORE[job_id] = {
+        "job_id": job_id,
+        "lesson_id": lesson_id,
+        "step": "queued",
+        "percent": 0,
+        "step_label": "Queued",
+        "error": None,
+    }
+
+    # Execute synchronous generation pipeline
+    run_lesson_pipeline(job_id, lesson_id, req)
+
+    job_state = JOB_STORE[job_id]
+    assert job_state["step"] == "completed", f"Pipeline failed: {job_state.get('error')}"
+    assert job_state["error"] is None
+
+    # Verify generated LessonPlan
+    lesson = LESSON_STORE[lesson_id]
+    assert lesson.topic == "Explain Ratio and proportion"
+    assert lesson.level == "beginner"
+    assert lesson.language == "en"
+    assert len(lesson.scenes) == 3
+    assert hasattr(lesson, "scenes")
+    # Verify educational fields populated
+    assert lesson.summary is not None
+    assert len(lesson.learning_objectives) >= 1
+    assert len(lesson.glossary) >= 1
+    assert len(lesson.revision_questions) >= 1
+
+    # Verify manifest
+    manifest = MANIFEST_STORE[lesson_id]
+    assert manifest.lesson_id == lesson_id
+    assert len(manifest.entries) == 3
+    assert manifest.total_duration_seconds > 0
+
+
+def test_generate_lesson_hindi_translation():
+    """Verify selecting Hindi produces translated narration and preserves code integrity."""
+    from backend.app.main import run_lesson_pipeline, JOB_STORE, LESSON_STORE, GenerateRequest
+    import uuid
+
+    job_id = f"test_{uuid.uuid4().hex[:6]}"
+    lesson_id = f"lesson_{job_id}"
+    req = GenerateRequest(
+        topic="Explain Ratio and proportion",
+        level="beginner",
+        language="hi",
+        target_duration_seconds=45,
+    )
+
+    JOB_STORE[job_id] = {
+        "job_id": job_id,
+        "lesson_id": lesson_id,
+        "step": "queued",
+        "percent": 0,
+        "step_label": "Queued",
+        "error": None,
+    }
+
+    run_lesson_pipeline(job_id, lesson_id, req)
+
+    job_state = JOB_STORE[job_id]
+    assert job_state["step"] == "completed", f"Pipeline failed: {job_state.get('error')}"
+
+    lesson = LESSON_STORE[lesson_id]
+    assert lesson.language == "hi"
+    assert lesson.source_language == "en"
+    # Verify scene 1 contains Hindi text
+    assert "अनुपात" in lesson.scenes[0].heading or "[HI]" in lesson.scenes[0].heading
+    # Verify code scene still has valid code
+    code_scene = lesson.scenes[1]
+    assert hasattr(code_scene, "code")
+    assert "gcd" in code_scene.code or "python" in code_scene.code_language.lower()
+
+
+def test_api_generate_lesson_endpoint():
+    """Verify POST /api/lessons/generate correctly enqueues a generation job."""
+    res = client.post(
+        "/api/lessons/generate",
+        json={
+            "topic": "Explain Ratio and proportion",
+            "level": "beginner",
+            "language": "en",
+            "target_duration_seconds": 45,
+        },
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert "job_id" in data
+    assert "lesson_id" in data
+    assert data["status"] == "queued"
+
+    job_res = client.get(f"/api/lessons/jobs/{data['job_id']}")
+    assert job_res.status_code == 200
+    job_data = job_res.json()
+    assert "step" in job_data
+    assert "percent" in job_data
+
+

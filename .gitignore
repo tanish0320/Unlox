@@ -18,6 +18,13 @@ ENV/
 # Temporary test audio
 test_*.wav
 outputs/audio/
+outputs/test_run/
+outputs/generated/
+outputs/verification_screenshot.png
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
 
 # OS generated
 .DS_Store

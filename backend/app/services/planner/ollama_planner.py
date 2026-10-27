@@ -65,6 +65,11 @@ class OllamaLessonPlanner:
         plan = self._cached_fallback.model_copy(deep=True)
         if topic:
             plan.topic = topic
+            plan.title = f"Understanding {topic}"
+            plan.scenes[0].heading = f"Introduction to {topic}"
+            plan.scenes[0].narration = (
+                f"Welcome to this lesson on {topic}. We will explore the essential concepts step by step."
+            )
         return plan
 
     def is_available(self) -> bool:
@@ -92,6 +97,8 @@ class OllamaLessonPlanner:
         level: str = "beginner",
         target_duration_seconds: int = 60,
         client: Optional[httpx.Client] = None,
+        language: str = "en",
+        **kwargs,
     ) -> Tuple[LessonPlan, bool, Optional[str]]:
         """
         Generates a lesson plan via Ollama with schema enforcement.

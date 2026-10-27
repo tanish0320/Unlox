@@ -1,0 +1,11 @@
+1
+00:00:00,000 --> 00:00:07,018
+A loop repeats an instruction for each value in a sequence. Let's see how Python makes this simple.
+
+2
+00:00:07,318 --> 00:00:15,151
+Range of three gives three values: zero, one, and two. The for loop assigns each value to variable i.
+
+3
+00:00:15,451 --> 00:00:22,449
+Each pass takes the next value, runs print i, and stops when all items in the sequence are exhausted.
