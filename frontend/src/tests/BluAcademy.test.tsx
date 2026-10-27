@@ -738,5 +738,206 @@ describe("Blu Academy — Interaction Prompt Dynamic Sizing & Overflow Preventio
   });
 });
 
+describe("Blu Academy — NPC & Teacher Interaction Prompt Suite", () => {
+  const corridor = CLASSROOMS.corridor;
+  const mockMeasure = (str: string) => str.length * 6.2;
+  const standardViewports = [
+    { w: 1366, h: 708, name: "1366x768" },
+    { w: 1280, h: 660, name: "1280x720" },
+    { w: 1920, h: 1020, name: "1920x1080" },
+    { w: 1024, h: 708, name: "1024x768" },
+  ];
+
+  it("dynamically sizes and formats Caretaker Sam prompt with zero text overflow", () => {
+    const caretakerDef = HALLWAY_NPCS.find((n) => n.name === "Caretaker Sam")!;
+    expect(caretakerDef).toBeDefined();
+
+    const layout = PixelRenderer.calculateCharacterPromptLayout(
+      caretakerDef.name,
+      caretakerDef.position,
+      "npc",
+      corridor,
+      0,
+      mockMeasure
+    );
+
+    // Two-line layout to cleanly contain the full name
+    expect(layout.lines).toEqual(["[E] Talk with", "Caretaker Sam"]);
+    expect(layout.promptH).toBe(36);
+    expect(layout.bgColor).toBe("#0F172A");
+    expect(layout.borderColor).toBe("#38BDF8");
+
+    // Must have at least 10-12px padding per side (>= 20px total)
+    for (const line of layout.lines) {
+      const lineW = mockMeasure(line);
+      expect(layout.promptW).toBeGreaterThanOrEqual(lineW + 20);
+    }
+  });
+
+  it("formats all six subject teachers with proper breathing room and gold accents", () => {
+    const teacherRooms: Array<keyof typeof CLASSROOMS> = [
+      "maths",
+      "cs",
+      "physics",
+      "chemistry",
+      "biology",
+      "social",
+    ];
+
+    for (const rKey of teacherRooms) {
+      const room = CLASSROOMS[rKey];
+      const teacher = room.teacher!;
+      expect(teacher).toBeDefined();
+
+      const layout = PixelRenderer.calculateCharacterPromptLayout(
+        teacher.name,
+        teacher.position,
+        "teacher",
+        room,
+        0,
+        mockMeasure
+      );
+
+      // Verify teacher styling
+      expect(layout.bgColor).toBe("#16382B");
+      expect(layout.borderColor).toBe("#F59E0B");
+      expect(layout.lines[0]).toBe("[E] Speak with");
+      expect(layout.lines[1]).toBe(teacher.name);
+      expect(layout.promptH).toBe(36);
+
+      // Verify each line fits completely inside prompt width
+      for (const line of layout.lines) {
+        expect(layout.promptW).toBeGreaterThanOrEqual(mockMeasure(line) + 20);
+      }
+    }
+  });
+
+  it("handles all hallway and classroom NPCs without clipping", () => {
+    // Hallway NPCs
+    for (const npc of HALLWAY_NPCS) {
+      const layout = PixelRenderer.calculateCharacterPromptLayout(
+        npc.name,
+        npc.position,
+        "npc",
+        corridor,
+        0,
+        mockMeasure
+      );
+
+      for (const line of layout.lines) {
+        expect(layout.promptW).toBeGreaterThanOrEqual(mockMeasure(line) + 20);
+      }
+      expect(layout.promptX).toBeGreaterThanOrEqual(8);
+      expect(layout.promptX + layout.promptW).toBeLessThanOrEqual(corridor.gridWidth * 32 - 8);
+    }
+
+    // Classroom NPCs
+    const roomKeys: Array<keyof typeof CLASSROOMS> = [
+      "maths",
+      "cs",
+      "physics",
+      "chemistry",
+      "biology",
+      "social",
+    ];
+    for (const rKey of roomKeys) {
+      const room = CLASSROOMS[rKey];
+      const npcs = CLASSROOM_NPCS[rKey] || [];
+      for (const npc of npcs) {
+        const layout = PixelRenderer.calculateCharacterPromptLayout(
+          npc.name,
+          npc.position,
+          "npc",
+          room,
+          0,
+          mockMeasure
+        );
+
+        for (const line of layout.lines) {
+          expect(layout.promptW).toBeGreaterThanOrEqual(mockMeasure(line) + 20);
+        }
+        expect(layout.promptX).toBeGreaterThanOrEqual(8);
+        expect(layout.promptX + layout.promptW).toBeLessThanOrEqual(room.gridWidth * 32 - 8);
+      }
+    }
+  });
+
+  it("repositions prompt below character when insufficient vertical space exists above", () => {
+    // Character standing very close to top wall (y = 1.0)
+    const topPos = { x: 10, y: 1.0 };
+    const layout = PixelRenderer.calculateCharacterPromptLayout(
+      "Caretaker Sam",
+      topPos,
+      "npc",
+      corridor,
+      0,
+      mockMeasure
+    );
+
+    // Should flip arrow to pointing up, and position prompt below the character
+    expect(layout.arrowDirection).toBe("up");
+    const py = Math.round((topPos.y + 0.9) * 32);
+    expect(layout.promptY).toBeGreaterThanOrEqual(py);
+    expect(layout.promptY).toBeGreaterThanOrEqual(6);
+  });
+
+  it("clamps prompts and indicator arrow near screen edges across all resolutions", () => {
+    // Character right at the left wall (x = 0.5)
+    const leftPos = { x: 0.5, y: 8 };
+    const leftLayout = PixelRenderer.calculateCharacterPromptLayout(
+      "Leo",
+      leftPos,
+      "npc",
+      corridor,
+      0,
+      mockMeasure
+    );
+    expect(leftLayout.promptX).toBeGreaterThanOrEqual(8);
+    expect(leftLayout.arrowX).toBeGreaterThanOrEqual(leftLayout.promptX + 8);
+    expect(leftLayout.arrowX).toBeLessThanOrEqual(leftLayout.promptX + leftLayout.promptW - 8);
+
+    // Character right at the right wall (x = 25.5)
+    const rightPos = { x: 25.5, y: 8 };
+    const rightLayout = PixelRenderer.calculateCharacterPromptLayout(
+      "Leo",
+      rightPos,
+      "npc",
+      corridor,
+      0,
+      mockMeasure
+    );
+    expect(rightLayout.promptX + rightLayout.promptW).toBeLessThanOrEqual(corridor.gridWidth * 32 - 8);
+    expect(rightLayout.arrowX).toBeGreaterThanOrEqual(rightLayout.promptX + 8);
+    expect(rightLayout.arrowX).toBeLessThanOrEqual(rightLayout.promptX + rightLayout.promptW - 8);
+
+    // Viewport bounds check across standard desktop resolutions
+    for (const vp of standardViewports) {
+      for (const npc of HALLWAY_NPCS) {
+        const cam = getCameraTransform(corridor, npc.position, vp.w, vp.h);
+        const layout = PixelRenderer.calculateCharacterPromptLayout(
+          npc.name,
+          npc.position,
+          "npc",
+          corridor,
+          0,
+          mockMeasure,
+          { camX: cam.camX, camY: cam.camY, zoom: cam.zoom, canvasWidth: vp.w, canvasHeight: vp.h }
+        );
+
+        const screenX = layout.promptX * cam.zoom - cam.camX;
+        const screenRight = (layout.promptX + layout.promptW) * cam.zoom - cam.camX;
+        const screenY = layout.promptY * cam.zoom - cam.camY;
+        const screenBottom = (layout.promptY + layout.promptH) * cam.zoom - cam.camY;
+
+        expect(screenX).toBeGreaterThanOrEqual(-4);
+        expect(screenRight).toBeLessThanOrEqual(vp.w + 4);
+        expect(screenY).toBeGreaterThanOrEqual(-4);
+        expect(screenBottom).toBeLessThanOrEqual(vp.h + 4);
+      }
+    }
+  });
+});
+
+
 
 
