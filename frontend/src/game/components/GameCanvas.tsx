@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { ClassroomDef, Direction, Position, RoomId, TeacherDef } from "../types";
 import { CollisionSystem } from "../engine/CollisionSystem";
 import { InputManager } from "../engine/InputManager";
-import { PixelRenderer, TILE_SIZE } from "../engine/PixelRenderer";
+import { PixelRenderer, TILE_SIZE, getCameraTransform } from "../engine/PixelRenderer";
+import { NPCManager } from "../engine/NPCManager";
 import { CLASSROOMS } from "../data/classrooms";
 
 export interface GameCanvasProps {
@@ -42,6 +43,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   const clickTargetRef = useRef<Position | null>(null);
 
   const inputManagerRef = useRef<InputManager | null>(null);
+  const npcManagerRef = useRef<NPCManager>(new NPCManager());
   const animFrameIdRef = useRef<number | null>(null);
   const animTickRef = useRef<number>(0);
   const transitionCooldownRef = useRef<number>(0);
@@ -67,6 +69,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     posRef.current = targetPos;
     clickTargetRef.current = null;
     setIsMoving(false);
+
+    // Initialize NPCs for this room
+    npcManagerRef.current.initRoom(currentRoom.id);
 
     // Initial facing direction based on destination entrance:
     if (["maths", "cs", "physics"].includes(currentRoom.id)) {
@@ -97,8 +102,17 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       if (isPausedRef.current) return;
       const room = roomRef.current;
       const pos = posRef.current;
+
+      // 1. Prioritize Teacher Interaction (Launches lesson studio)
       if (room.teacher && CollisionSystem.isNearTeacher(room, pos)) {
         onInteractTeacher(room.teacher);
+        return;
+      }
+
+      // 2. Ambient NPC Dialogue (Students, staff, peers)
+      const nearNPC = npcManagerRef.current.getNearNPC(pos);
+      if (nearNPC) {
+        npcManagerRef.current.interactWith(nearNPC, pos);
       }
     });
 
@@ -128,6 +142,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       const currentPos = { ...posRef.current };
       let moving = false;
       let newDirection = dirRef.current;
+
+      // Update ambient NPCs
+      if (!isPausedRef.current) {
+        npcManagerRef.current.update(dt, room, currentPos);
+      }
 
       if (!isPausedRef.current && inputManagerRef.current) {
         const { dx, dy, direction } = inputManagerRef.current.getMovement();
@@ -216,6 +235,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         setIsMoving(moving);
       }
 
+      // Check near NPC for ambient prompt
+      const nearNPC = npcManagerRef.current.getNearNPC(currentPos);
+
       // Render Frame
       PixelRenderer.render({
         ctx,
@@ -228,6 +250,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         walkFrame: Math.floor(moveCounter),
         animTick: animTickRef.current,
         isNearTeacher: Boolean(room.teacher && CollisionSystem.isNearTeacher(room, currentPos)),
+        npcs: npcManagerRef.current.getNPCs(),
+        nearNPC,
       });
 
       animFrameIdRef.current = requestAnimationFrame(gameLoop);
@@ -242,7 +266,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     };
   }, [onRoomChange]);
 
-  // Click on Canvas handler for accessibility (tap to move or tap teacher to talk)
+  // Click on Canvas handler for accessibility (tap to move, tap NPC, or tap teacher to talk)
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (isPaused) return;
     const canvas = canvasRef.current;
@@ -255,40 +279,35 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     const clickCanvasX = (e.clientX - rect.left) * scaleX;
     const clickCanvasY = (e.clientY - rect.top) * scaleY;
 
-    // Convert canvas coordinates to world coordinates based on camera
+    // Convert canvas coordinates to world coordinates based on unified camera transform
     const room = roomRef.current;
-    const roomPxW = room.gridWidth * TILE_SIZE;
-    const roomPxH = room.gridHeight * TILE_SIZE;
+    const { camX, camY, zoom } = getCameraTransform(room, posRef.current, canvas.width, canvas.height);
 
-    let camX = 0;
-    if (roomPxW > canvas.width) {
-      camX = Math.max(0, Math.min(roomPxW - canvas.width, playerPos.x * TILE_SIZE - canvas.width / 2 + TILE_SIZE / 2));
-    } else {
-      camX = (roomPxW - canvas.width) / 2;
-    }
+    const worldX = (clickCanvasX + camX) / (TILE_SIZE * zoom);
+    const worldY = (clickCanvasY + camY) / (TILE_SIZE * zoom);
 
-    let camY = 0;
-    if (roomPxH > canvas.height) {
-      camY = Math.max(0, Math.min(roomPxH - canvas.height, playerPos.y * TILE_SIZE - canvas.height / 2 + TILE_SIZE / 2));
-    } else {
-      camY = (roomPxH - canvas.height) / 2;
-    }
-
-    const worldX = (clickCanvasX + camX) / TILE_SIZE;
-    const worldY = (clickCanvasY + camY) / TILE_SIZE;
-
-    // If teacher is clicked, open dialogue directly or move to teacher
+    // 1. If teacher is clicked, open lesson dialogue
     if (room.teacher) {
-      const tx = room.teacher.position.x;
-      const ty = room.teacher.position.y;
+      const tx = room.teacher.position.x + 0.5;
+      const ty = room.teacher.position.y + 0.5;
       if (Math.hypot(worldX - tx, worldY - ty) <= 2.2) {
         onInteractTeacher(room.teacher);
         return;
       }
     }
 
-    // Set destination target
-    clickTargetRef.current = { x: Math.max(1, Math.min(room.gridWidth - 2, worldX)), y: Math.max(2, Math.min(room.gridHeight - 2, worldY)) };
+    // 2. If an ambient NPC is clicked, trigger speech bubble
+    const clickedNPC = npcManagerRef.current.findClickedNPC(worldX, worldY);
+    if (clickedNPC) {
+      npcManagerRef.current.interactWith(clickedNPC, posRef.current);
+      return;
+    }
+
+    // 3. Otherwise set walking destination target
+    clickTargetRef.current = {
+      x: Math.max(1, Math.min(room.gridWidth - 2, worldX)),
+      y: Math.max(2, Math.min(room.gridHeight - 2, worldY)),
+    };
   };
 
   return (
@@ -329,11 +348,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           bottom: 12,
           left: "50%",
           transform: "translateX(-50%)",
-          backgroundColor: "rgba(15, 23, 42, 0.8)",
-          backdropFilter: "blur(4px)",
-          border: "1px solid rgba(255, 255, 255, 0.15)",
+          backgroundColor: "rgba(15, 23, 42, 0.85)",
+          backdropFilter: "blur(6px)",
+          border: "1px solid rgba(255, 255, 255, 0.18)",
           borderRadius: 20,
-          padding: "6px 16px",
+          padding: "7px 18px",
           color: "#E2E8F0",
           fontSize: 11,
           fontWeight: 600,
@@ -342,13 +361,14 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           alignItems: "center",
           gap: 12,
           fontFamily: "var(--blu-font-sans, system-ui, sans-serif)",
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
         }}
       >
         <span>⌨️ [W, A, S, D] or [Arrow Keys] to Move</span>
         <span>•</span>
-        <span>🖱️ Click to Walk / Tap Teacher</span>
+        <span>🖱️ Click to Walk / Tap Characters</span>
         <span>•</span>
-        <span>🗣️ [E] or [Enter] to Talk</span>
+        <span>🗣️ [E] or [Enter] to Talk with Teachers & Peers</span>
       </div>
     </div>
   );

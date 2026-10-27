@@ -295,3 +295,55 @@ npm run build
   - Central walking aisles are open and unobstructed.
 - **Vitest Suite**: 8/8 test files passed, 59/59 tests passed.
 
+---
+
+## 14. Blu Academy — NPC Population, Character Scaling & Signboard Polish
+
+### 14.1 Populated NPCs
+- **Grand Hallway (8 NPCs)**:
+  - **Leo** (Student, reading near bulletin board)
+  - **Priya** (Student, wandering between Maths and CS)
+  - **Arjun** (Student, wandering with headphones near Physics)
+  - **Caretaker Sam** (Academy Staff, patrolling central lobby)
+  - **Maya** (Student, seated at study bench)
+  - **Rohan** (Student, seated at study bench)
+  - **Dr. Thorne** (Visiting Scholar, examining trophy case)
+  - **Zoe** (Student, walking near south wings)
+- **Classrooms (18 NPCs — 3 students per room)**:
+  - **Maths Tower**: Dev, Tara, Kiran (seated at desks studying geometry and prime numbers)
+  - **CS Lab**: Aiden, Lin, Vikram (typing at workstations with glowing monitors)
+  - **Physics Observatory**: Nia, Omar, Sara (at optics bench, refractor telescope, and circuit tester)
+  - **Chemistry Lab**: Anya, Kabir, Elena (at distillation bench, titration bench, and centrifuge)
+  - **Biology Greenhouse**: Kai, Meera, Lucas (at fern sanctuary, microscope, and seedling nursery)
+  - **Social Sciences Museum**: Zara, Anand, Chloe (at terra globe, maritime display, and treaties archive)
+- **Behavior & Ambient Dialogue**:
+  - Managed by `NPCManager.ts`. Seated students remain at their desks, wandering hallway NPCs patrol safe bounded zones without blocking doors or trapping the player.
+  - Approaching within 1.8 tiles or clicking an NPC displays an animated pixel-art speech balloon above their head for 4.5 seconds with educational dialogue.
+  - Ambient NPCs never launch fake lesson generation; existing teachers remain solely responsible for starting lessons.
+
+### 14.2 Character Scaling & Visual Proportions
+- **Character Sprites**: Enlarged from ~28px to 42px visual height (~1.5× scale factor), with distinct silhouettes, detailed hair highlights, directional pupils with specular glints, uniforms, and accessories (spectacles, backpacks, headphones, caps, safety goggles, scarves).
+- **Collision Safety**: Visual sprites are anchored at the feet. Feet collision hitbox (`0.6 × 0.35` tiles) remains untouched, guaranteeing zero navigation or entrance/exit collision regressions.
+
+### 14.3 Classroom Immersion & Camera Zoom
+- **Camera Zoom Factor**:
+  - Grand Hallway: $1.3\times$ zoom ($1082 \times 749\text{px}$ world view), smoothly tracking vertical exploration between north and south wings.
+  - Classrooms: $1.45\times$ zoom ($928 \times 650\text{px}$ world view), comfortably filling the $1280 \times 720$ canvas with balanced framing and zero empty void.
+- **Unified Click Transform**: Click-to-move and character click interactions map through `getCameraTransform()`, maintaining 100% click-to-tile coordinate accuracy.
+
+### 14.4 Redesigned Classroom Signboards
+- **Zero Edge Clipping**:
+  - Top row doors (Maths, CS, Physics): Signboards positioned at $Y = 4\text{px}$ inside the top wall header ($0 \le Y \le 36\text{px}$), completely eliminating the previous top-edge clipping.
+  - Bottom row doors (Chemistry, Biology, Social): Signboards positioned at $Y = 464\text{px}$ above the south archway, completely eliminating the previous bottom-edge clipping.
+- **Two-Line Hierarchy**:
+  - Main Title: Bold cream uppercase (e.g. `PHYSICS OBSERVATORY`, `MATHS TOWER`, `CS LAB`).
+  - Subtitle: Pastel blue faculty designation (e.g. `Dr. Newton`, `Ms. Asha`, `Prof. Byte`).
+- **Interactive Proximity Feedback**:
+  - Signboard frame glows with animated gold breathing pulse when player is within 2.5 tiles.
+  - Floating contextual prompt appears: `[W] or [↑] Enter {subject}` (North doors) or `[S] or [↓] Enter {subject}` (South doors).
+
+### 14.5 Automated Test Results
+- **Vitest Suite**: 8/8 test files passed, 64/64 tests passed.
+- **Build**: `tsc && vite build` clean in 1.44s.
+
+

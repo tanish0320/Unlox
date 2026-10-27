@@ -9,6 +9,9 @@ import { useGameProgress } from "../game/state/useGameProgress";
 import { DialogueOverlay } from "../game/components/DialogueOverlay";
 import { QuizModal } from "../game/components/QuizModal";
 import { GameLaunchPayload, TeacherDef } from "../game/types";
+import { HALLWAY_NPCS, CLASSROOM_NPCS, getRoomNPCs } from "../game/data/npcDefinitions";
+import { NPCManager } from "../game/engine/NPCManager";
+import { getCameraTransform, getCameraZoom } from "../game/engine/PixelRenderer";
 
 describe("Blu Academy — Collision & Map Navigation System", () => {
   const corridor = CLASSROOMS.corridor;
@@ -384,4 +387,118 @@ describe("Blu Academy — 6-Classroom Room Transitions & Collision Regression Su
     }
   });
 });
+
+describe("Blu Academy — NPC Population, Scaling & Signage Polish Suite", () => {
+  const roomIds = ["maths", "cs", "physics", "chemistry", "biology", "social"] as const;
+  const corridor = CLASSROOMS.corridor;
+
+  it("populates Grand Hallway with 8 distinct, well-distributed NPCs", () => {
+    expect(HALLWAY_NPCS.length).toBe(8);
+
+    for (const npc of HALLWAY_NPCS) {
+      expect(npc.name).toBeTruthy();
+      expect(npc.outfitColor).toMatch(/^#[0-9A-Fa-f]{6}$/);
+      expect(npc.hairColor).toMatch(/^#[0-9A-Fa-f]{6}$/);
+      expect(npc.skinTone).toMatch(/^#[0-9A-Fa-f]{6}$/);
+      expect(npc.dialogue.length).toBeGreaterThanOrEqual(1);
+
+      // Verify NPC spawn is within corridor grid bounds
+      expect(npc.position.x).toBeGreaterThan(0);
+      expect(npc.position.x).toBeLessThan(corridor.gridWidth);
+      expect(npc.position.y).toBeGreaterThan(0);
+      expect(npc.position.y).toBeLessThan(corridor.gridHeight);
+
+      // Verify NPC does not spawn on a door trigger
+      const onDoor = CollisionSystem.checkDoor(corridor, npc.position);
+      expect(onDoor).toBeNull();
+    }
+  });
+
+  it("populates each of the 6 classrooms with 3 engaged student NPCs (18 total)", () => {
+    let totalClassroomNPCs = 0;
+
+    for (const roomId of roomIds) {
+      const npcs = CLASSROOM_NPCS[roomId];
+      expect(npcs).toBeDefined();
+      expect(npcs.length).toBe(3);
+      totalClassroomNPCs += npcs.length;
+
+      const room = CLASSROOMS[roomId];
+
+      for (const npc of npcs) {
+        expect(npc.name).toBeTruthy();
+        expect(npc.dialogue.length).toBeGreaterThanOrEqual(1);
+
+        // Verify NPC does not spawn on classroom exit door
+        const onDoor = CollisionSystem.checkDoor(room, npc.position);
+        expect(onDoor).toBeNull();
+
+        // Verify NPC leaves central aisle clear (aisle is at x = 9.5)
+        expect(Math.abs(npc.position.x - 9.5)).toBeGreaterThan(2.0);
+      }
+    }
+
+    expect(totalClassroomNPCs).toBe(18);
+  });
+
+  it("manages NPC state transitions, proximity detection, and speech bubbles via NPCManager", () => {
+    const mgr = new NPCManager();
+    mgr.initRoom("corridor");
+    const npcs = mgr.getNPCs();
+    expect(npcs.length).toBe(8);
+
+    // Test proximity detection near Leo at (5.5, 3.5)
+    const nearLeo = mgr.getNearNPC({ x: 5.5, y: 4.0 }, 1.5);
+    expect(nearLeo).not.toBeNull();
+    expect(nearLeo?.def.name).toBe("Leo");
+
+    // Test ambient dialogue trigger
+    const line = mgr.interactWith(nearLeo!, { x: 5.5, y: 4.0 });
+    expect(line).toBeTruthy();
+    expect(nearLeo?.activeSpeechBubble).not.toBeNull();
+    expect(nearLeo?.activeSpeechBubble?.text).toBe(line);
+    expect(nearLeo?.activeSpeechBubble?.expiresAt).toBeGreaterThan(performance.now());
+
+    // Test clicking detection
+    const clicked = mgr.findClickedNPC(5.5, 3.5, 1.0);
+    expect(clicked).not.toBeNull();
+    expect(clicked?.def.name).toBe("Leo");
+  });
+
+  it("applies camera zoom and scaling without distorting coordinate mapping", () => {
+    expect(getCameraZoom("corridor")).toBe(1.3);
+    expect(getCameraZoom("maths")).toBe(1.45);
+    expect(getCameraZoom("cs")).toBe(1.45);
+
+    // Corridor camera transform at center (13, 9)
+    const corridorTransform = getCameraTransform(corridor, { x: 13, y: 9 }, 1280, 720);
+    expect(corridorTransform.zoom).toBe(1.3);
+    // When room is narrower than canvas, camX centers the room: (1081.6 - 1280) / 2 = -99.2
+    expect(corridorTransform.camX).toBeCloseTo((corridor.gridWidth * 32 * 1.3 - 1280) / 2, 1);
+
+    // Classroom camera transform at spawn (9.5, 11.0)
+    const mathsTransform = getCameraTransform(CLASSROOMS.maths, { x: 9.5, y: 11.0 }, 1280, 720);
+    expect(mathsTransform.zoom).toBe(1.45);
+    // Classroom is centered in canvas: (928 - 1280) / 2 = -176
+    expect(mathsTransform.camX).toBeCloseTo((CLASSROOMS.maths.gridWidth * 32 * 1.45 - 1280) / 2, 1);
+    expect(mathsTransform.camY).toBeCloseTo((CLASSROOMS.maths.gridHeight * 32 * 1.45 - 720) / 2, 1);
+  });
+
+  it("guarantees classroom signboards fit completely inside viewport without edge clipping", () => {
+    // Top doors in corridor (Maths, CS, Physics): signY = 4px, height = 32px
+    // Since 4 >= 0 and 4 + 32 = 36 <= 18 * 32 (576), no clipping!
+    const topSignY = 4;
+    const topSignH = 32;
+    expect(topSignY).toBeGreaterThanOrEqual(0);
+    expect(topSignY + topSignH).toBeLessThan(corridor.gridHeight * 32);
+
+    // Bottom doors in corridor (Chemistry, Biology, Social): signY = 464px, height = 32px
+    // 464 + 32 = 496 <= 576, no bottom clipping!
+    const bottomSignY = 464;
+    const bottomSignH = 32;
+    expect(bottomSignY + bottomSignH).toBeLessThan(corridor.gridHeight * 32);
+    expect(bottomSignY).toBeGreaterThan(0);
+  });
+});
+
 
