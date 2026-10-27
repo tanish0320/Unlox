@@ -20,6 +20,7 @@ interface GenerationProgressProps {
   onRetry: () => void
   onUseSample: () => void
   onMakeAnother: () => void
+  sampleUsed?: boolean
 }
 
 const steps = [
@@ -67,6 +68,7 @@ export function GenerationProgress({
   onRetry,
   onUseSample,
   onMakeAnother,
+  sampleUsed = false,
 }: GenerationProgressProps) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const startedAt = useRef<number | null>(null)
@@ -116,7 +118,11 @@ export function GenerationProgress({
         </div>
       </div>
 
-      {status?.fallback_used && (
+      {sampleUsed ? (
+        <div className="fallback-banner" role="status">
+          This is the built-in sample lesson, not a new one.
+        </div>
+      ) : status?.fallback_used && (
         <div className="fallback-banner" role="status">
           The AI planner was not available, so a built-in sample lesson is shown.
         </div>

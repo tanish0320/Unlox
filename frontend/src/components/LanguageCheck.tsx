@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { LANGUAGES } from '../config/languages'
 
 const sampleCaptions: Record<string, string> = {
@@ -9,6 +10,14 @@ const sampleCaptions: Record<string, string> = {
 }
 
 export function LanguageCheck() {
+  useEffect(() => {
+    const previousTitle = document.title
+    document.title = 'Blu Visual Teacher - Language check'
+    return () => {
+      document.title = previousTitle
+    }
+  }, [])
+
   return (
     <main className="language-check-page">
       <header>

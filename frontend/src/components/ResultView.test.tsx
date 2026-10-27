@@ -17,10 +17,29 @@ describe('ResultView', () => {
   })
 
   it('shows a clear value when model details are missing', () => {
-    render(<ResultView lesson={mockLesson} fallbackUsed={false} />)
+    const lessonWithoutDetails = {
+      ...mockLesson,
+      artifact_manifest: {
+        ...mockLesson.artifact_manifest,
+        timings_by_stage: {},
+      },
+    }
+    render(<ResultView lesson={lessonWithoutDetails} fallbackUsed={false} />)
     fireEvent.click(screen.getByRole('tab', { name: 'Details' }))
 
     expect(screen.getByText('Model names:')).toBeInTheDocument()
-    expect(screen.getByText('Not provided')).toBeInTheDocument()
+    expect(screen.getAllByText('Not provided')).toHaveLength(2)
+  })
+
+  it('shows a friendly message when the lesson has no notes', () => {
+    render(
+      <ResultView
+        lesson={{ ...mockLesson, notes: '' }}
+        fallbackUsed={false}
+      />,
+    )
+    fireEvent.click(screen.getByRole('tab', { name: 'Notes' }))
+
+    expect(screen.getByText('No notes yet')).toBeInTheDocument()
   })
 })

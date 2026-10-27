@@ -10,7 +10,7 @@ import type {
 
 const env = import.meta.env
 const useMock = env.VITE_USE_MOCK === 'true'
-const apiBase = (env.VITE_API_BASE ?? '').replace(/\/+$/, '')
+const apiBase = (env.VITE_API_BASE?.trim() || '/api').replace(/\/+$/, '')
 export const pollIntervalMs = readPositiveInteger(
   env.VITE_POLL_INTERVAL_MS,
   500,
@@ -54,7 +54,12 @@ function endpoint(path: string) {
 }
 
 async function requestJson(path: string, init?: RequestInit): Promise<unknown> {
-  const response = await fetch(endpoint(path), init)
+  let response: Response
+  try {
+    response = await fetch(endpoint(path), init)
+  } catch {
+    throw new Error('Cannot reach the local server. Is the backend running?')
+  }
   if (!response.ok) {
     throw new Error(`API request failed (${response.status} ${response.statusText})`)
   }

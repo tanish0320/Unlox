@@ -20,6 +20,7 @@ import {
 interface LessonPlayerProps {
   lesson: LessonResponse
   lessonId: string
+  autoPlay?: boolean
 }
 
 function isSmallScreen() {
@@ -41,10 +42,15 @@ function formatTime(seconds: number) {
 
 const playbackSpeeds: PlaybackSpeed[] = [0.75, 1, 1.25]
 
-export function LessonPlayer({ lesson, lessonId }: LessonPlayerProps) {
+export function LessonPlayer({
+  lesson,
+  lessonId,
+  autoPlay = false,
+}: LessonPlayerProps) {
   const playback = usePlayback(lesson)
   const playerRef = useRef<HTMLDivElement>(null)
   const sceneChipRowRef = useRef<HTMLDivElement>(null)
+  const autoPlayStartedRef = useRef(false)
   const [captionsVisible, setCaptionsVisible] = useState(true)
   const [videoMode, setVideoMode] = useState(
     () => !isMockMode() && isSmallScreen(),
@@ -74,12 +80,30 @@ export function LessonPlayer({ lesson, lessonId }: LessonPlayerProps) {
         )
       : 0
 
+  const startPlayback = playback.play
+  useEffect(() => {
+    if (autoPlay && !autoPlayStartedRef.current) {
+      autoPlayStartedRef.current = true
+      startPlayback()
+    }
+  }, [autoPlay, startPlayback])
+
   useEffect(() => {
     const activeChip =
       sceneChipRowRef.current?.querySelector<HTMLButtonElement>(
         'button[aria-pressed="true"]',
       )
-    activeChip?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
+    const prefersReducedMotion =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const behavior = prefersReducedMotion
+      ? 'auto'
+      : 'smooth'
+    activeChip?.scrollIntoView?.({
+      behavior,
+      block: 'nearest',
+      inline: 'nearest',
+    })
   }, [playback.currentSceneIndex])
 
   const toggleFullScreen = useCallback(async () => {
@@ -124,6 +148,11 @@ export function LessonPlayer({ lesson, lessonId }: LessonPlayerProps) {
 
   return (
     <div className="lesson-player" ref={playerRef}>
+      <span className="sr-only" aria-live="polite" aria-atomic="true">
+        {scene
+          ? `Scene ${playback.currentSceneIndex + 1} of ${scenes.length}: ${scene.heading}`
+          : 'No lesson scenes'}
+      </span>
       <div className="player-mode-switch" role="group" aria-label="Player mode">
         <button
           type="button"

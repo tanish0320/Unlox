@@ -134,6 +134,14 @@ function readJson(value: string): unknown {
 function BuiltInNotes({ notes }: { notes: string }) {
   const content = readNotes(notes)
   const [revealedQuestions, setRevealedQuestions] = useState<number[]>([])
+  if (!notes.trim()) {
+    return (
+      <div className="result-notes-empty" role="status">
+        <h2>No notes yet</h2>
+        <p>There are no notes for this lesson yet. You can still review the scenes above.</p>
+      </div>
+    )
+  }
 
   function toggleAnswer(index: number) {
     setRevealedQuestions((current) =>
@@ -213,11 +221,24 @@ export function ResultView({ lesson, fallbackUsed }: ResultViewProps) {
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
   const plan = lesson.lesson_plan
   const language = LANGUAGES.find((item) => item.code === plan.language)
-  const duration = lesson.artifact_manifest.audio.reduce(
-    (total, audio) => total + audio.duration_seconds,
-    0,
-  ) || plan.target_duration_seconds
-  const timings = Object.entries(lesson.artifact_manifest.timings_by_stage)
+  const manifest = asRecord(lesson.artifact_manifest)
+  const audio = Array.isArray(manifest?.audio) ? manifest.audio : []
+  const audioDuration = audio.reduce((total, artifact) => {
+    const item = asRecord(artifact)
+    return total + (
+      typeof item?.duration_seconds === 'number' &&
+      Number.isFinite(item.duration_seconds)
+        ? item.duration_seconds
+        : 0
+    )
+  }, 0)
+  const duration =
+    audioDuration ||
+    (Number.isFinite(plan.target_duration_seconds)
+      ? plan.target_duration_seconds
+      : 0)
+  const stageTimings = asRecord(manifest?.timings_by_stage) ?? {}
+  const timings = Object.entries(stageTimings)
   const tabIndex = tabs.findIndex((tab) => tab.id === activeTab)
 
   function onTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
@@ -295,7 +316,8 @@ export function ResultView({ lesson, fallbackUsed }: ResultViewProps) {
                     <tr key={stage}>
                       <th scope="row">{stage}</th>
                       <td>
-                        {Number.isFinite(milliseconds)
+                        {typeof milliseconds === 'number' &&
+                        Number.isFinite(milliseconds)
                           ? `${(milliseconds / 1000).toFixed(1)} sec`
                           : 'Not provided'}
                       </td>

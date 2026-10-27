@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Check, Clipboard, Download, Film, Languages, NotebookPen } from 'lucide-react'
 import type { ReactNode } from 'react'
 import {
@@ -6,7 +6,7 @@ import {
   subtitlesUrl,
   videoUrl,
 } from '../api/client'
-import { mockLesson } from '../api/mockData'
+import { getMockLesson } from '../api/mockData'
 import type { GenerateRequest, LessonResponse } from '../api/types'
 import { LANGUAGES } from '../config/languages'
 import { useLessonJob } from '../hooks/useLessonJob'
@@ -41,6 +41,7 @@ interface DownloadLinkProps {
   disabled: boolean
   children: ReactNode
   secondary?: boolean
+  disabledReason?: string
 }
 
 function DownloadLink({
@@ -49,6 +50,7 @@ function DownloadLink({
   disabled,
   children,
   secondary = false,
+  disabledReason,
 }: DownloadLinkProps) {
   const className = `download-link${secondary ? ' secondary' : ''}${disabled ? ' is-disabled' : ''}`
   if (disabled) {
@@ -57,7 +59,7 @@ function DownloadLink({
         className={className}
         type="button"
         disabled
-        title="Available when the backend is connected"
+        title={disabledReason ?? 'Available when the backend is connected'}
       >
         {children}
       </button>
@@ -79,9 +81,22 @@ export function Home() {
   const { startJob, reset, jobId, status, lesson, error, isLoading } =
     useLessonJob()
   const [lastRequest, setLastRequest] = useState<GenerateRequest | null>(null)
-  const [samplePreview, setSamplePreview] = useState(false)
+  const [sampleLesson, setSampleLesson] = useState<LessonResponse | null>(null)
   const [formKey, setFormKey] = useState(0)
   const [copyMessage, setCopyMessage] = useState('')
+  const ready = Boolean(lesson && status?.status === 'ready')
+  const hasReadyLesson = ready || Boolean(sampleLesson)
+  const playableLesson = ready ? lesson : sampleLesson
+
+  useEffect(() => {
+    const previousTitle = document.title
+    document.title = hasReadyLesson
+      ? 'Blu Visual Teacher - Lesson ready'
+      : 'Blu Visual Teacher'
+    return () => {
+      document.title = previousTitle
+    }
+  }, [hasReadyLesson])
 
   async function copyNotes() {
     try {
@@ -94,24 +109,29 @@ export function Home() {
 
   function submitLesson(request: GenerateRequest) {
     setLastRequest(request)
-    setSamplePreview(false)
+    setSampleLesson(null)
     void startJob(request)
   }
 
   function retryLesson() {
     if (!lastRequest) return
-    setSamplePreview(false)
+    setSampleLesson(null)
     void startJob(lastRequest)
+  }
+
+  function useSampleLesson() {
+    reset()
+    setSampleLesson(getMockLesson(lastRequest?.language ?? 'en'))
   }
 
   function makeAnotherLesson() {
     reset()
     setLastRequest(null)
-    setSamplePreview(false)
+    setSampleLesson(null)
     setFormKey((key) => key + 1)
   }
 
-  const shownLesson = lesson ?? (samplePreview ? mockLesson : null)
+  const shownLesson = lesson ?? sampleLesson
   const language = shownLesson
     ? LANGUAGES.find((item) => item.code === shownLesson.lesson_plan.language)
     : undefined
@@ -121,7 +141,6 @@ export function Home() {
       ? subtitlesUrl(jobId)
       : shownLesson?.artifact_manifest.subtitles_url ?? ''
     : ''
-  const ready = Boolean(lesson && status?.status === 'ready')
   const videoDownloadUrl =
     (jobId ? videoUrl(jobId) : '') || lesson?.artifact_manifest.video_url || ''
   const notesDownloadUrl =
@@ -160,8 +179,9 @@ export function Home() {
             error={error}
             timingsByStage={lesson?.artifact_manifest.timings_by_stage}
             onRetry={retryLesson}
-            onUseSample={() => setSamplePreview(true)}
+            onUseSample={useSampleLesson}
             onMakeAnother={makeAnotherLesson}
+            sampleUsed={Boolean(sampleLesson)}
           />
         </div>
       </section>
@@ -171,19 +191,34 @@ export function Home() {
           <span className="preview-dot" aria-hidden="true" />
           <span>{lesson ? 'YOUR LESSON' : shownLesson ? 'LESSON DETAILS' : 'LESSON PREVIEW'}</span>
         </div>
-        {lesson && status?.status === 'ready' ? (
+        {playableLesson ? (
           <>
-            <LessonPlayer lesson={lesson} lessonId={jobId ?? ''} />
-            {isMockMode && (
+            <LessonPlayer
+              lesson={playableLesson}
+              lessonId={sampleLesson ? '' : jobId ?? ''}
+              autoPlay={Boolean(sampleLesson)}
+            />
+            {sampleLesson ? (
               <p className="demo-text-note">
                 Demo sample text. Real narration comes from the local models.
               </p>
-            )}
+            ) : isMockMode ? (
+              <p className="demo-text-note">
+                Demo sample text. Real narration comes from the local models.
+              </p>
+            ) : null}
             <ResultView
-              lesson={lesson}
-              fallbackUsed={status.fallback_used}
+              lesson={playableLesson}
+              fallbackUsed={sampleLesson ? true : status?.fallback_used ?? false}
             />
           </>
+        ) : isLoading ? (
+          <div className="preview-skeleton" role="status" aria-label="Loading lesson">
+            <span className="skeleton-line skeleton-title" />
+            <span className="skeleton-stage" />
+            <span className="skeleton-line" />
+            <span className="skeleton-line skeleton-short" />
+          </div>
         ) : shownLesson ? (
           <div className="ready-preview" aria-live="polite">
             <span className="ready-preview-icon" aria-hidden="true">
@@ -205,9 +240,6 @@ export function Home() {
                 <Languages size={15} aria-hidden="true" />
                 {language.nativeName}
               </span>
-            )}
-            {samplePreview && !lesson && (
-              <p className="sample-preview-note">Sample lesson preview</p>
             )}
           </div>
         ) : (
@@ -240,6 +272,7 @@ export function Home() {
               href={videoDownloadUrl}
               filename="blu-lesson.mp4"
               disabled={isMockMode || !videoDownloadUrl}
+              disabledReason={isMockMode ? undefined : "This video file is not available for this lesson."}
             >
               <Download size={17} aria-hidden="true" />
               Download MP4
@@ -248,6 +281,7 @@ export function Home() {
               href={notesDownloadUrl}
               filename="blu-lesson-notes.json"
               disabled={isMockMode || !notesDownloadUrl}
+              disabledReason={isMockMode ? undefined : "Notes are not available for download for this lesson."}
               secondary
             >
               <NotebookPen size={17} aria-hidden="true" />
@@ -258,6 +292,7 @@ export function Home() {
                 href={subtitleDownloadUrl}
                 filename="blu-lesson-captions.srt"
                 disabled={isMockMode}
+                disabledReason={isMockMode ? undefined : "Captions are not available for download for this lesson."}
                 secondary
               >
                 <Languages size={17} aria-hidden="true" />
@@ -274,6 +309,15 @@ export function Home() {
             </button>
           </div>
           {copyMessage && <p className="copy-notes-message" role="status">{copyMessage}</p>}
+          {!isMockMode && (!videoDownloadUrl || !notesDownloadUrl) && (
+            <p className="download-missing-message" role="status">
+              {!videoDownloadUrl && !notesDownloadUrl
+                ? 'The video and notes files are not available for download.'
+                : !videoDownloadUrl
+                  ? 'The video file is not available for download.'
+                  : 'The notes file is not available for download.'}
+            </p>
+          )}
         </section>
       )}
     </main>

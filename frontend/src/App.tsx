@@ -81,8 +81,6 @@ function App() {
     }
   }, [largeText])
 
-  if (showLanguageCheck) return <LanguageCheck />
-
   return (
     <div className={`app-shell${isDark ? ' theme-dark' : ''}`}>
       <header className="topbar">
@@ -109,6 +107,9 @@ function App() {
             <WifiOff size={16} aria-hidden="true" />
             Works offline after setup
           </span>
+          {import.meta.env.VITE_USE_MOCK === 'true' && (
+            <span className="mock-data-badge">Mock data</span>
+          )}
           <button
             className="header-button"
             type="button"
@@ -116,7 +117,7 @@ function App() {
             aria-pressed={isDark}
             onClick={() => setIsDark((current) => !current)}
           >
-            {isDark ? <Sun size={19} /> : <Moon size={19} />}
+            {isDark ? <Sun size={19} aria-hidden="true" /> : <Moon size={19} aria-hidden="true" />}
           </button>
           <button
             className="header-button text-size-button"
@@ -131,27 +132,29 @@ function App() {
       </header>
 
       <div className="app-layout">
-        <aside className="sidebar" aria-label="Main navigation">
-          <nav className="side-nav">
-            <a className="nav-item" href="#home">
-              <Home size={19} aria-hidden="true" />
-              <span>Home</span>
-            </a>
-            <a
-              className="nav-item active"
-              href="#create-lesson"
-              aria-current="page"
-            >
-              <BookOpen size={19} aria-hidden="true" />
-              <span>Create a Lesson</span>
-            </a>
-          </nav>
-          <div className="sidebar-footer">
-            <ReaderIllustration />
-            <p className="hand-note">Small steps create big changes</p>
-          </div>
-        </aside>
-        <HomePage />
+        {!showLanguageCheck && (
+          <aside className="sidebar" aria-label="Main navigation">
+            <nav className="side-nav">
+              <a className="nav-item" href="#home">
+                <Home size={19} aria-hidden="true" />
+                <span>Home</span>
+              </a>
+              <a
+                className="nav-item active"
+                href="#create-lesson"
+                aria-current="page"
+              >
+                <BookOpen size={19} aria-hidden="true" />
+                <span>Create a Lesson</span>
+              </a>
+            </nav>
+            <div className="sidebar-footer">
+              <ReaderIllustration />
+              <p className="hand-note">Small steps create big changes</p>
+            </div>
+          </aside>
+        )}
+        {showLanguageCheck ? <LanguageCheck /> : <HomePage />}
       </div>
     </div>
   )
