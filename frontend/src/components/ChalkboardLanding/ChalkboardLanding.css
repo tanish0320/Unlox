@@ -1,0 +1,208 @@
+/* Fullscreen Realistic Chalkboard Landing styles */
+.chalkboard-landing-root {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  background-color: #06090D;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  user-select: none;
+  cursor: pointer;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.chalkboard-landing-root.fading-out {
+  opacity: 0;
+  transform: scale(0.98);
+  pointer-events: none;
+}
+
+/* Authentic Wooden Frame */
+.chalkboard-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #734524 0%, #4A2B16 40%, #241309 100%);
+  padding: 16px 16px 36px 16px;
+  border-radius: 12px;
+  box-shadow: 
+    0 20px 50px rgba(0, 0, 0, 0.9),
+    inset 0 2px 4px rgba(255, 255, 255, 0.25),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chalkboard-frame::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.02) 0px, rgba(0, 0, 0, 0.04) 3px, transparent 6px);
+  pointer-events: none;
+}
+
+/* Brass Corner Screws */
+.chalkboard-screw {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: radial-gradient(circle at 35% 35%, #FDE047, #CA8A04, #713F12);
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  z-index: 10;
+}
+.chalkboard-screw.top-left { top: 7px; left: 7px; }
+.chalkboard-screw.top-right { top: 7px; right: 7px; }
+.chalkboard-screw.bottom-left { bottom: 7px; left: 7px; }
+.chalkboard-screw.bottom-right { bottom: 7px; right: 7px; }
+
+/* Slate Board Surface */
+.chalkboard-slate {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at 50% 35%, #214330 0%, #183324 55%, #0F2016 100%);
+  border-radius: 6px;
+  box-shadow: 
+    inset 0 4px 20px rgba(0, 0, 0, 0.8),
+    inset 0 0 80px rgba(0, 0, 0, 0.5),
+    0 1px 2px rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+/* Ambient Classroom Spotlight */
+.chalkboard-spotlight {
+  position: absolute;
+  top: -40px;
+  left: 15%;
+  right: 15%;
+  height: 200px;
+  background: radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.1) 0%, transparent 75%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Canvas Container */
+.chalkboard-canvas-holder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
+}
+
+.chalkboard-canvas-holder canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Discreet, Accessible Skip Button Option */
+.chalkboard-skip-btn {
+  position: absolute;
+  top: 18px;
+  right: 22px;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 18px;
+  background: rgba(10, 25, 16, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 24px;
+  color: rgba(255, 255, 255, 0.85);
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+}
+
+.chalkboard-skip-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.5);
+  color: #FFFFFF;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+}
+
+.chalkboard-skip-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.chalkboard-skip-btn svg {
+  transition: transform 0.2s ease;
+}
+
+.chalkboard-skip-btn:hover svg {
+  transform: translateX(3px);
+}
+
+.chalkboard-skip-hint {
+  font-size: 0.72rem;
+  opacity: 0.6;
+  margin-left: 2px;
+  font-weight: 400;
+}
+
+/* Wooden Chalk Ledge & Tray at Bottom */
+.chalkboard-tray {
+  position: absolute;
+  bottom: 2px;
+  left: 16px;
+  right: 16px;
+  height: 28px;
+  background: linear-gradient(180deg, #241309 0%, #170d07 100%);
+  border-radius: 4px;
+  box-shadow: 
+    inset 0 3px 6px rgba(0, 0, 0, 0.9),
+    0 1px 2px rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.tray-chalk-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tray-chalk-piece {
+  width: 32px;
+  height: 8px;
+  border-radius: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+
+.tray-chalk-piece.white { background: #FFFFFF; }
+.tray-chalk-piece.yellow { background: #FFF380; }
+.tray-chalk-piece.cyan { background: #80E5FF; }
+.tray-chalk-piece.pink { background: #FFA8D5; }
+
+.tray-duster-block {
+  width: 62px;
+  height: 14px;
+  background: linear-gradient(180deg, #A0522D 0%, #5E2F0D 60%, #D4D4D4 100%);
+  border-radius: 3px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+}

@@ -22,3 +22,10 @@ outputs/audio/
 # OS generated
 .DS_Store
 Thumbs.db
+
+# Frontend build & dependencies
+node_modules/
+dist/
+frontend/dist/
+frontend/node_modules/
+outputs/jobs/

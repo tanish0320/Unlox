@@ -1,8 +1,9 @@
-﻿import { useEffect, useState } from 'react'
-import { BookOpen, Home, Moon, Sun, WifiOff } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { BookOpen, Home, Moon, Sun, WifiOff, Sparkles } from 'lucide-react'
 import { BRAND_NAME, BRAND_TAGLINE } from './config/brand'
 import { LanguageCheck } from './components/LanguageCheck'
 import { Home as HomePage } from './pages/Home'
+import { ChalkboardLanding } from './components/ChalkboardLanding'
 import './App.css'
 
 function getSavedTextSize() {
@@ -68,6 +69,17 @@ function App() {
     new URLSearchParams(window.location.search).get('langtest') === '1'
   const [isDark, setIsDark] = useState(false)
   const [largeText, setLargeText] = useState(getSavedTextSize)
+  const [showIntro, setShowIntro] = useState(() => {
+    if (typeof window === 'undefined') return false
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('intro') === '1') return true
+    if (params.get('intro') === '0' || params.get('langtest') === '1') return false
+    try {
+      return window.sessionStorage.getItem('blu-intro-seen') !== 'true'
+    } catch {
+      return false
+    }
+  })
 
   useEffect(() => {
     const root = document.documentElement
@@ -82,7 +94,18 @@ function App() {
   }, [largeText])
 
   return (
-    <div className={`app-shell${isDark ? ' theme-dark' : ''}`}>
+    <>
+      {showIntro && (
+        <ChalkboardLanding
+          onSkip={() => {
+            try {
+              window.sessionStorage.setItem('blu-intro-seen', 'true')
+            } catch {}
+            setShowIntro(false)
+          }}
+        />
+      )}
+      <div className={`app-shell${isDark ? ' theme-dark' : ''}`}>
       <header className="topbar">
         <div className="brand-lockup">
           <div className="brand">
@@ -110,6 +133,15 @@ function App() {
           {import.meta.env.VITE_USE_MOCK === 'true' && (
             <span className="mock-data-badge">Mock data</span>
           )}
+          <button
+            className="header-button"
+            type="button"
+            aria-label="View chalkboard landing intro"
+            title="Watch Chalkboard Intro"
+            onClick={() => setShowIntro(true)}
+          >
+            <Sparkles size={19} aria-hidden="true" />
+          </button>
           <button
             className="header-button"
             type="button"
@@ -157,6 +189,7 @@ function App() {
         {showLanguageCheck ? <LanguageCheck /> : <HomePage />}
       </div>
     </div>
+    </>
   )
 }
 
