@@ -45,38 +45,45 @@ export const GameHUD: React.FC<GameHUDProps> = ({
   const xpPercent = Math.min(100, Math.round((progress.currentXP / progress.nextLevelXP) * 100));
 
   return (
-    <div
+    <header
+      data-testid="blu-academy-hud"
       style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        padding: "16px 20px",
+        position: "relative",
+        width: "100%",
+        height: 60,
+        minHeight: 60,
+        flexShrink: 0,
+        backgroundColor: "#0B1020",
+        borderBottom: "1.5px solid rgba(245, 158, 11, 0.25)",
+        boxShadow: "0 4px 16px rgba(0, 0, 0, 0.5)",
         display: "flex",
         justifyContent: "space-between",
-        alignItems: "flex-start",
-        pointerEvents: "none",
-        zIndex: 20,
+        alignItems: "center",
+        padding: "0 18px",
+        boxSizing: "border-box",
+        zIndex: 50,
         fontFamily: "var(--blu-font-sans, system-ui, sans-serif)",
       }}
     >
-      {/* Top Left: Current Room & Fast Travel */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, pointerEvents: "auto" }}>
+      {/* Left Section: Current Location + Map & Quick Visit */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        {/* Current Location Badge */}
         <div
           style={{
+            height: 38,
             backgroundColor: "rgba(15, 23, 42, 0.88)",
-            backdropFilter: "blur(6px)",
-            padding: "8px 16px",
-            borderRadius: 12,
+            padding: "0 14px",
+            borderRadius: 10,
             border: `1.5px solid ${currentRoom.accentColor}`,
             color: "#FFFFFF",
-            boxShadow: "0 8px 24px rgba(0, 0, 0, 0.35)",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.25)",
             display: "flex",
             alignItems: "center",
-            gap: 12,
+            gap: 10,
+            boxSizing: "border-box",
           }}
         >
-          <span style={{ fontSize: 18 }}>
+          <span style={{ fontSize: 18, lineHeight: 1 }}>
             {currentRoom.id === "corridor" && "🏛️"}
             {currentRoom.id === "maths" && "📐"}
             {currentRoom.id === "cs" && "💻"}
@@ -85,56 +92,60 @@ export const GameHUD: React.FC<GameHUDProps> = ({
             {currentRoom.id === "biology" && "🌿"}
             {currentRoom.id === "social" && "🏺"}
           </span>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: "-0.01em" }}>
+          <div style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
+            <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "-0.01em", lineHeight: 1.2 }}>
               {currentRoom.name}
             </div>
             {currentRoom.teacher && (
-              <div style={{ fontSize: 11, color: currentRoom.accentColor, fontWeight: 600 }}>
+              <div style={{ fontSize: 10.5, color: currentRoom.accentColor, fontWeight: 600, lineHeight: 1 }}>
                 Instructor: {currentRoom.teacher.name}
               </div>
             )}
           </div>
         </div>
 
-        {/* Fast Travel / Quick Nav Button */}
+        {/* Map & Quick Visit Button */}
         <div style={{ position: "relative" }}>
           <button
             onClick={() => setShowFastTravel(!showFastTravel)}
             style={{
+              height: 38,
               backgroundColor: "rgba(30, 41, 59, 0.9)",
-              border: "1px solid rgba(255, 255, 255, 0.15)",
+              border: "1px solid rgba(255, 255, 255, 0.18)",
               color: "#F8FAFC",
-              padding: "6px 12px",
-              borderRadius: 8,
+              padding: "0 14px",
+              borderRadius: 10,
               fontSize: 12,
               fontWeight: 600,
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
               gap: 6,
-              boxShadow: "0 4px 10px rgba(0,0,0,0.2)",
+              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
+              boxSizing: "border-box",
+              transition: "background-color 0.15s ease",
             }}
           >
             <span>🗺️ Map & Quick Visit</span>
-            <span style={{ fontSize: 10 }}>{showFastTravel ? "▲" : "▼"}</span>
+            <span style={{ fontSize: 9 }}>{showFastTravel ? "▲" : "▼"}</span>
           </button>
 
           {showFastTravel && (
             <div
               style={{
                 position: "absolute",
-                top: 36,
+                top: "calc(100% + 8px)",
                 left: 0,
                 backgroundColor: "#0F172A",
-                border: "1px solid #334155",
+                border: "1.5px solid #334155",
                 borderRadius: 12,
                 padding: 8,
-                width: 240,
-                boxShadow: "0 12px 30px rgba(0, 0, 0, 0.5)",
+                width: 250,
+                boxShadow: "0 12px 30px rgba(0, 0, 0, 0.65)",
                 display: "flex",
                 flexDirection: "column",
                 gap: 4,
+                zIndex: 100,
               }}
             >
               <div
@@ -144,6 +155,7 @@ export const GameHUD: React.FC<GameHUDProps> = ({
                   color: "#94A3B8",
                   textTransform: "uppercase",
                   padding: "4px 8px",
+                  letterSpacing: "0.05em",
                 }}
               >
                 Teleport to Room
@@ -158,21 +170,21 @@ export const GameHUD: React.FC<GameHUDProps> = ({
                       setShowFastTravel(false);
                     }}
                     style={{
-                      textAlign: "left",
-                      padding: "8px 12px",
-                      borderRadius: 6,
-                      border: "none",
-                      backgroundColor: isCurrent ? `${room.accentColor}30` : "transparent",
-                      color: isCurrent ? room.accentColor : "#E2E8F0",
-                      fontSize: 12,
-                      fontWeight: isCurrent ? 700 : 500,
-                      cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
-                      gap: 8,
+                      gap: 10,
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      border: isCurrent ? `1.5px solid ${room.accentColor}` : "1px solid transparent",
+                      backgroundColor: isCurrent ? "rgba(255, 255, 255, 0.08)" : "transparent",
+                      color: isCurrent ? "#F8FAFC" : "#CBD5E1",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      fontSize: 12,
+                      fontWeight: isCurrent ? 700 : 500,
                     }}
                   >
-                    <span>
+                    <span style={{ fontSize: 16 }}>
                       {room.id === "corridor" && "🏛️"}
                       {room.id === "maths" && "📐"}
                       {room.id === "cs" && "💻"}
@@ -190,31 +202,32 @@ export const GameHUD: React.FC<GameHUDProps> = ({
         </div>
       </div>
 
-      {/* Top Right: Player Stats & Exit to Studio */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, pointerEvents: "auto" }}>
+      {/* Right Section: Player Stats & Exit to Studio */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         {/* XP and Level Pill */}
         <div
           onClick={onOpenProgress}
           style={{
+            height: 38,
             backgroundColor: "rgba(15, 23, 42, 0.88)",
-            backdropFilter: "blur(6px)",
-            padding: "8px 14px",
-            borderRadius: 12,
-            border: "1.5px solid rgba(255, 255, 255, 0.12)",
+            padding: "0 12px",
+            borderRadius: 10,
+            border: "1.5px solid rgba(255, 255, 255, 0.14)",
             color: "#FFFFFF",
             display: "flex",
             alignItems: "center",
-            gap: 12,
+            gap: 10,
             cursor: "pointer",
-            boxShadow: "0 8px 24px rgba(0, 0, 0, 0.35)",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.25)",
+            boxSizing: "border-box",
           }}
           title="Click to view Student Badges & Progress"
         >
           {/* Level Circle */}
           <div
             style={{
-              width: 32,
-              height: 32,
+              width: 24,
+              height: 24,
               borderRadius: "50%",
               backgroundColor: "#E59866",
               color: "#0F172A",
@@ -222,26 +235,27 @@ export const GameHUD: React.FC<GameHUDProps> = ({
               alignItems: "center",
               justifyContent: "center",
               fontWeight: 800,
-              fontSize: 14,
+              fontSize: 12,
+              flexShrink: 0,
             }}
           >
             {progress.level}
           </div>
 
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 4 }}>
-              <span style={{ fontWeight: 700, color: "#E2E8F0" }}>Level {progress.level} Scholar</span>
+          <div style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5, marginBottom: 2, gap: 8 }}>
+              <span style={{ fontWeight: 700, color: "#E2E8F0" }}>Level {progress.level}</span>
               <span style={{ color: "#94A3B8" }}>
-                {progress.currentXP} / {progress.nextLevelXP} XP
+                {progress.currentXP}/{progress.nextLevelXP} XP
               </span>
             </div>
             {/* XP Bar */}
             <div
               style={{
-                width: 110,
-                height: 6,
+                width: 80,
+                height: 5,
                 backgroundColor: "rgba(255, 255, 255, 0.15)",
-                borderRadius: 4,
+                borderRadius: 3,
                 overflow: "hidden",
               }}
             >
@@ -250,7 +264,7 @@ export const GameHUD: React.FC<GameHUDProps> = ({
                   width: `${xpPercent}%`,
                   height: "100%",
                   backgroundColor: "#E59866",
-                  borderRadius: 4,
+                  borderRadius: 3,
                   transition: "width 0.4s ease",
                 }}
               />
@@ -259,14 +273,14 @@ export const GameHUD: React.FC<GameHUDProps> = ({
 
           <div
             style={{
-              padding: "4px 8px",
+              padding: "2px 6px",
               backgroundColor: "rgba(255, 255, 255, 0.08)",
-              borderRadius: 6,
-              fontSize: 12,
+              borderRadius: 5,
+              fontSize: 11,
               fontWeight: 600,
               display: "flex",
               alignItems: "center",
-              gap: 4,
+              gap: 3,
             }}
           >
             <span>🏅</span>
@@ -277,21 +291,23 @@ export const GameHUD: React.FC<GameHUDProps> = ({
         {/* Native Fullscreen Toggle Button */}
         <button
           onClick={toggleFullscreen}
-          title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+          title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen Mode"}
           style={{
-            backgroundColor: "rgba(30, 41, 59, 0.88)",
-            border: "1px solid rgba(255, 255, 255, 0.2)",
+            height: 38,
+            backgroundColor: "rgba(30, 41, 59, 0.9)",
+            border: "1px solid rgba(255, 255, 255, 0.18)",
             color: "#F8FAFC",
-            padding: "8px 14px",
-            borderRadius: 12,
-            fontSize: 13,
+            padding: "0 12px",
+            borderRadius: 10,
+            fontSize: 12,
             fontWeight: 600,
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
             gap: 6,
-            backdropFilter: "blur(6px)",
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.25)",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
+            boxSizing: "border-box",
+            transition: "background-color 0.15s ease",
           }}
         >
           <span style={{ fontSize: 13 }}>{isFullscreen ? "⤢" : "⛶"}</span>
@@ -301,25 +317,29 @@ export const GameHUD: React.FC<GameHUDProps> = ({
         {/* Exit to Studio Button */}
         <button
           onClick={onExitGame}
+          title="Return to Blu Lesson Studio"
           style={{
+            height: 38,
             backgroundColor: "#234E3C",
             border: "1px solid #34D399",
             color: "#FFFFFF",
-            padding: "8px 16px",
-            borderRadius: 12,
-            fontSize: 13,
+            padding: "0 16px",
+            borderRadius: 10,
+            fontSize: 12.5,
             fontWeight: 700,
             cursor: "pointer",
-            boxShadow: "0 4px 14px rgba(35, 78, 60, 0.4)",
+            boxShadow: "0 2px 10px rgba(35, 78, 60, 0.4)",
             display: "flex",
             alignItems: "center",
             gap: 6,
+            boxSizing: "border-box",
+            transition: "background-color 0.15s ease",
           }}
         >
           <span>Studio</span>
           <span>➔</span>
         </button>
       </div>
-    </div>
+    </header>
   );
 };

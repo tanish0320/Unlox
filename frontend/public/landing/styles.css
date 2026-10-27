@@ -1,0 +1,168 @@
+/* Pure Fullscreen Greenboard Chalk Animation */
+:root {
+    --chalk-green-dark: #0F2016;
+    --chalk-green-mid: #183324;
+    --chalk-green-light: #214330;
+
+    --wood-dark: #241309;
+    --wood-mid: #4A2B16;
+    --wood-light: #734524;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background-color: #06090D;
+    user-select: none;
+}
+
+/* Fullscreen Chalkboard */
+.fullscreen-chalkboard {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    background: #06090D;
+    cursor: pointer;
+}
+
+/* Authentic Wooden Frame Border */
+.board-frame-border {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, var(--wood-light) 0%, var(--wood-mid) 40%, var(--wood-dark) 100%);
+    padding: 16px 16px 36px 16px;
+    border-radius: 12px;
+    box-shadow: 
+        0 20px 50px rgba(0, 0, 0, 0.9),
+        inset 0 2px 4px rgba(255, 255, 255, 0.25),
+        inset 0 -2px 6px rgba(0, 0, 0, 0.7);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.board-frame-border::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.02) 0px, rgba(0, 0, 0, 0.04) 3px, transparent 6px);
+    pointer-events: none;
+}
+
+/* Brass Screws on Corners */
+.frame-screw {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    background: radial-gradient(circle at 35% 35%, #FDE047, #CA8A04, #713F12);
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+    z-index: 10;
+}
+.frame-screw.top-left { top: 7px; left: 7px; }
+.frame-screw.top-right { top: 7px; right: 7px; }
+.frame-screw.bottom-left { bottom: 7px; left: 7px; }
+.frame-screw.bottom-right { bottom: 7px; right: 7px; }
+
+/* Slate Greenboard Surface */
+.slate-board {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(ellipse at 50% 35%, var(--chalk-green-light) 0%, var(--chalk-green-mid) 55%, var(--chalk-green-dark) 100%);
+    border-radius: 6px;
+    box-shadow: 
+        inset 0 4px 20px rgba(0, 0, 0, 0.8),
+        inset 0 0 80px rgba(0, 0, 0, 0.5),
+        0 1px 2px rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+}
+
+/* Subtle Classroom Top Spotlight */
+.slate-spotlight {
+    position: absolute;
+    top: -40px;
+    left: 15%;
+    right: 15%;
+    height: 200px;
+    background: radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.1) 0%, transparent 75%);
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* Canvas Container */
+#chalkboard-canvas-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 3;
+}
+
+#chalkboard-canvas-container canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+
+/* Wooden Chalk Ledge & Tray at Bottom */
+.chalk-tray {
+    position: absolute;
+    bottom: 2px;
+    left: 16px;
+    right: 16px;
+    height: 28px;
+    background: linear-gradient(180deg, var(--wood-dark) 0%, #170d07 100%);
+    border-radius: 4px;
+    box-shadow: 
+        inset 0 3px 6px rgba(0, 0, 0, 0.9),
+        0 1px 2px rgba(255, 255, 255, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    z-index: 6;
+    pointer-events: none;
+}
+
+.tray-chalk-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.tray-chalk {
+    width: 32px;
+    height: 8px;
+    border-radius: 2px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+
+.tray-chalk.white { background: #FFFFFF; }
+.tray-chalk.yellow { background: #FFF380; }
+.tray-chalk.cyan { background: #80E5FF; }
+.tray-chalk.pink { background: #FFA8D5; }
+
+.tray-duster {
+    width: 62px;
+    height: 14px;
+    background: linear-gradient(180deg, #A0522D 0%, #5E2F0D 60%, #D4D4D4 100%);
+    border-radius: 3px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+}

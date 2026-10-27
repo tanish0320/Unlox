@@ -8,10 +8,11 @@ import { loadProgress, saveProgress, resetProgress, STORAGE_KEY } from "../game/
 import { useGameProgress } from "../game/state/useGameProgress";
 import { DialogueOverlay } from "../game/components/DialogueOverlay";
 import { QuizModal } from "../game/components/QuizModal";
+import { GameHUD } from "../game/components/GameHUD";
 import { GameLaunchPayload, TeacherDef } from "../game/types";
-import { HALLWAY_NPCS, CLASSROOM_NPCS, getRoomNPCs } from "../game/data/npcDefinitions";
+import { HALLWAY_NPCS, CLASSROOM_NPCS } from "../game/data/npcDefinitions";
 import { NPCManager } from "../game/engine/NPCManager";
-import { getCameraTransform, getCameraZoom } from "../game/engine/PixelRenderer";
+import { PixelRenderer, getCameraTransform, getCameraZoom } from "../game/engine/PixelRenderer";
 
 describe("Blu Academy — Collision & Map Navigation System", () => {
   const corridor = CLASSROOMS.corridor;
@@ -547,6 +548,396 @@ describe("Blu Academy — NPC Population, Scaling & Signage Polish Suite", () =>
     expect(bottomSignY + bottomSignH).toBeLessThan(corridor.gridHeight * 32);
     expect(bottomSignY).toBeGreaterThan(0);
   });
+
+  it("renders dedicated ~60px HUD bar with compact controls above game viewport without overlap", () => {
+    const { getByTestId, getByText } = render(
+      <GameHUD
+        currentRoom={CLASSROOMS.corridor}
+        progress={loadProgress()}
+        onSelectRoom={vi.fn()}
+        onOpenProgress={vi.fn()}
+        onExitGame={vi.fn()}
+      />
+    );
+
+    const hud = getByTestId("blu-academy-hud");
+    expect(hud).toBeDefined();
+    expect(hud.tagName.toLowerCase()).toBe("header");
+    expect(hud.style.height).toBe("60px");
+    expect(hud.style.minHeight).toBe("60px");
+    expect(hud.style.position).toBe("relative"); // In normal layout flow, not position: absolute!
+
+    // Verify presence of left section controls
+    expect(getByText("Academy Grand Hallway")).toBeDefined();
+    expect(getByText("🗺️ Map & Quick Visit")).toBeDefined();
+
+    // Verify presence of right section controls
+    expect(getByText("Level 1")).toBeDefined();
+    expect(getByText("Studio")).toBeDefined();
+    expect(getByText("Fullscreen")).toBeDefined();
+  });
+
+  it("calculates camera transform correctly for post-HUD viewport heights across desktop resolutions", () => {
+    // 60px dedicated HUD bar leaves remaining height (screenH - 60):
+    const viewports = [
+      { w: 1366, h: 708, fullH: 768, name: "1366x768" },
+      { w: 1280, h: 660, fullH: 720, name: "1280x720" },
+      { w: 1920, h: 1020, fullH: 1080, name: "1920x1080" },
+      { w: 1024, h: 708, fullH: 768, name: "1024x768" },
+    ];
+
+    for (const vp of viewports) {
+      // 1. Grand Hallway camera in post-HUD viewport:
+      // When player approaches upper towers (y = 2.0), camera reaches top (camY = 0)
+      const topHallwayT = getCameraTransform(corridor, { x: 13, y: 2.0 }, vp.w, vp.h);
+      expect(topHallwayT.camY).toBe(0);
+
+      // Upper signs are at world y = 4px; in canvas pixels: 4 * zoom >= 4px > 0
+      const upperSignCanvasY = 4 * topHallwayT.zoom - topHallwayT.camY;
+      expect(upperSignCanvasY).toBeGreaterThanOrEqual(0);
+      expect(upperSignCanvasY + 32 * topHallwayT.zoom).toBeLessThan(vp.h);
+
+      // 2. When player approaches southern wings (y = 15.0), camera reaches bottom (camY = max)
+      const bottomHallwayT = getCameraTransform(corridor, { x: 13, y: 15.0 }, vp.w, vp.h);
+      const bottomSignCanvasY = 464 * bottomHallwayT.zoom - bottomHallwayT.camY;
+      expect(bottomSignCanvasY).toBeGreaterThan(0);
+      expect(bottomSignCanvasY + 32 * bottomHallwayT.zoom).toBeLessThanOrEqual(vp.h);
+
+      // 3. Classrooms fit inside post-HUD viewport and remain centered
+      for (const roomId of roomIds) {
+        const room = CLASSROOMS[roomId];
+        const roomT = getCameraTransform(room, { x: 9.5, y: 11.0 }, vp.w, vp.h);
+        const screenW = room.gridWidth * 32 * roomT.zoom;
+        const screenH = room.gridHeight * 32 * roomT.zoom;
+
+        expect(screenW).toBeLessThanOrEqual(vp.w + 1);
+        expect(screenH).toBeLessThanOrEqual(vp.h + 1);
+        expect(roomT.camX).toBeCloseTo((screenW - vp.w) / 2, 1);
+        expect(roomT.camY).toBeCloseTo((screenH - vp.h) / 2, 1);
+      }
+    }
+  });
 });
+
+describe("Blu Academy — Interaction Prompt Dynamic Sizing & Overflow Prevention", () => {
+  const corridor = CLASSROOMS.corridor;
+  const standardViewports = [
+    { w: 1366, h: 708, name: "1366x768" },
+    { w: 1280, h: 660, name: "1280x720" },
+    { w: 1920, h: 1020, name: "1920x1080" },
+    { w: 1024, h: 708, name: "1024x768" },
+  ];
+
+  it("dynamically sizes prompt and prevents overflow for all six classroom hallway doors", () => {
+    // Realistic canvas text measurement simulator for bold 9.5px sans-serif (~6.2px average char width)
+    const mockMeasure = (str: string) => str.length * 6.2;
+
+    for (const door of corridor.doors) {
+      const signCenterX = (door.triggerArea.x + door.triggerArea.width / 2) * 32;
+      const layout = PixelRenderer.calculateDoorPromptLayout(door, corridor, signCenterX, mockMeasure);
+
+      // 1. Text breathing room: prompt width must accommodate every line plus padding
+      for (const line of layout.lines) {
+        const textW = mockMeasure(line);
+        expect(layout.promptW).toBeGreaterThanOrEqual(textW + 20);
+      }
+
+      // 2. Height accommodates line count without squeezing
+      if (layout.lines.length === 1) {
+        expect(layout.promptH).toBe(22);
+      } else {
+        expect(layout.promptH).toBe(36);
+        // Verify line 1 is key guidance and line 2 is room title
+        expect(layout.lines[0]).toMatch(/(\[W\] or \[↑\]|\[S\] or \[↓\]) Enter/);
+        expect(layout.lines[1].length).toBeGreaterThan(0);
+      }
+
+      // 3. Prompt stays within room boundaries
+      expect(layout.promptX).toBeGreaterThanOrEqual(8);
+      expect(layout.promptX + layout.promptW).toBeLessThanOrEqual(corridor.gridWidth * 32 - 8);
+      expect(layout.promptY).toBeGreaterThanOrEqual(6);
+      expect(layout.promptY + layout.promptH).toBeLessThanOrEqual(corridor.gridHeight * 32 - 6);
+    }
+  });
+
+  it("properly splits PHYSICS OBSERVATORY across two lines to guarantee clean readability", () => {
+    const physicsDoor = corridor.doors.find((d) => d.targetRoom === "physics")!;
+    expect(physicsDoor).toBeDefined();
+
+    const signCenterX = (physicsDoor.triggerArea.x + physicsDoor.triggerArea.width / 2) * 32;
+    const layout = PixelRenderer.calculateDoorPromptLayout(physicsDoor, corridor, signCenterX);
+
+    expect(layout.lines).toEqual(["[W] or [↑] Enter", "PHYSICS OBSERVATORY"]);
+    expect(layout.promptH).toBe(36);
+    expect(layout.promptW).toBeGreaterThanOrEqual(140);
+    expect(layout.accentColor).toBe("#8B5CF6");
+  });
+
+  it("correctly positions exit prompts inside all classrooms without clipping or negative Y coordinates", () => {
+    const roomKeys: Array<keyof typeof CLASSROOMS> = [
+      "maths",
+      "cs",
+      "physics",
+      "chemistry",
+      "biology",
+      "social",
+    ];
+
+    for (const rKey of roomKeys) {
+      const room = CLASSROOMS[rKey];
+      for (const door of room.doors) {
+        const signCenterX = (door.triggerArea.x + door.triggerArea.width / 2) * 32;
+        const layout = PixelRenderer.calculateDoorPromptLayout(door, room, signCenterX);
+
+        // Lines should guide returning to hallway
+        expect(layout.lines).toEqual(["[Step Through]", "Return to Hallway"]);
+        expect(layout.promptH).toBe(36);
+
+        // Crucial bug fix check: promptY must NEVER be negative (clipping top wall)
+        expect(layout.promptY).toBeGreaterThanOrEqual(6);
+        expect(layout.promptY + layout.promptH).toBeLessThanOrEqual(room.gridHeight * 32 - 6);
+
+        // Prompt X within room bounds
+        expect(layout.promptX).toBeGreaterThanOrEqual(8);
+        expect(layout.promptX + layout.promptW).toBeLessThanOrEqual(room.gridWidth * 32 - 8);
+      }
+    }
+  });
+
+  it("guarantees prompt stays fully within viewport bounds across all desktop resolutions", () => {
+    for (const vp of standardViewports) {
+      for (const door of corridor.doors) {
+        const signCenterX = (door.triggerArea.x + door.triggerArea.width / 2) * 32;
+        // Camera positioned near this door
+        const playerPos = {
+          x: door.triggerArea.x + door.triggerArea.width / 2,
+          y: door.triggerArea.y < 5 ? 2.5 : 14.5,
+        };
+        const cam = getCameraTransform(corridor, playerPos, vp.w, vp.h);
+        const layout = PixelRenderer.calculateDoorPromptLayout(
+          door,
+          corridor,
+          signCenterX,
+          undefined,
+          { camX: cam.camX, camY: cam.camY, zoom: cam.zoom, canvasWidth: vp.w, canvasHeight: vp.h }
+        );
+
+        // Convert world coordinates to screen pixels
+        const screenX = layout.promptX * cam.zoom - cam.camX;
+        const screenRight = (layout.promptX + layout.promptW) * cam.zoom - cam.camX;
+        const screenY = layout.promptY * cam.zoom - cam.camY;
+        const screenBottom = (layout.promptY + layout.promptH) * cam.zoom - cam.camY;
+
+        // Prompt must be within visible screen (with 4px margin of tolerance for rounding)
+        expect(screenX).toBeGreaterThanOrEqual(-4);
+        expect(screenRight).toBeLessThanOrEqual(vp.w + 4);
+        expect(screenY).toBeGreaterThanOrEqual(-4);
+        expect(screenBottom).toBeLessThanOrEqual(vp.h + 4);
+      }
+    }
+  });
+});
+
+describe("Blu Academy — NPC & Teacher Interaction Prompt Suite", () => {
+  const corridor = CLASSROOMS.corridor;
+  const mockMeasure = (str: string) => str.length * 6.2;
+  const standardViewports = [
+    { w: 1366, h: 708, name: "1366x768" },
+    { w: 1280, h: 660, name: "1280x720" },
+    { w: 1920, h: 1020, name: "1920x1080" },
+    { w: 1024, h: 708, name: "1024x768" },
+  ];
+
+  it("dynamically sizes and formats Caretaker Sam prompt with zero text overflow", () => {
+    const caretakerDef = HALLWAY_NPCS.find((n) => n.name === "Caretaker Sam")!;
+    expect(caretakerDef).toBeDefined();
+
+    const layout = PixelRenderer.calculateCharacterPromptLayout(
+      caretakerDef.name,
+      caretakerDef.position,
+      "npc",
+      corridor,
+      0,
+      mockMeasure
+    );
+
+    // Two-line layout to cleanly contain the full name
+    expect(layout.lines).toEqual(["[E] Talk with", "Caretaker Sam"]);
+    expect(layout.promptH).toBe(36);
+    expect(layout.bgColor).toBe("#0F172A");
+    expect(layout.borderColor).toBe("#38BDF8");
+
+    // Must have at least 10-12px padding per side (>= 20px total)
+    for (const line of layout.lines) {
+      const lineW = mockMeasure(line);
+      expect(layout.promptW).toBeGreaterThanOrEqual(lineW + 20);
+    }
+  });
+
+  it("formats all six subject teachers with proper breathing room and gold accents", () => {
+    const teacherRooms: Array<keyof typeof CLASSROOMS> = [
+      "maths",
+      "cs",
+      "physics",
+      "chemistry",
+      "biology",
+      "social",
+    ];
+
+    for (const rKey of teacherRooms) {
+      const room = CLASSROOMS[rKey];
+      const teacher = room.teacher!;
+      expect(teacher).toBeDefined();
+
+      const layout = PixelRenderer.calculateCharacterPromptLayout(
+        teacher.name,
+        teacher.position,
+        "teacher",
+        room,
+        0,
+        mockMeasure
+      );
+
+      // Verify teacher styling
+      expect(layout.bgColor).toBe("#16382B");
+      expect(layout.borderColor).toBe("#F59E0B");
+      expect(layout.lines[0]).toBe("[E] Speak with");
+      expect(layout.lines[1]).toBe(teacher.name);
+      expect(layout.promptH).toBe(36);
+
+      // Verify each line fits completely inside prompt width
+      for (const line of layout.lines) {
+        expect(layout.promptW).toBeGreaterThanOrEqual(mockMeasure(line) + 20);
+      }
+    }
+  });
+
+  it("handles all hallway and classroom NPCs without clipping", () => {
+    // Hallway NPCs
+    for (const npc of HALLWAY_NPCS) {
+      const layout = PixelRenderer.calculateCharacterPromptLayout(
+        npc.name,
+        npc.position,
+        "npc",
+        corridor,
+        0,
+        mockMeasure
+      );
+
+      for (const line of layout.lines) {
+        expect(layout.promptW).toBeGreaterThanOrEqual(mockMeasure(line) + 20);
+      }
+      expect(layout.promptX).toBeGreaterThanOrEqual(8);
+      expect(layout.promptX + layout.promptW).toBeLessThanOrEqual(corridor.gridWidth * 32 - 8);
+    }
+
+    // Classroom NPCs
+    const roomKeys: Array<keyof typeof CLASSROOMS> = [
+      "maths",
+      "cs",
+      "physics",
+      "chemistry",
+      "biology",
+      "social",
+    ];
+    for (const rKey of roomKeys) {
+      const room = CLASSROOMS[rKey];
+      const npcs = CLASSROOM_NPCS[rKey] || [];
+      for (const npc of npcs) {
+        const layout = PixelRenderer.calculateCharacterPromptLayout(
+          npc.name,
+          npc.position,
+          "npc",
+          room,
+          0,
+          mockMeasure
+        );
+
+        for (const line of layout.lines) {
+          expect(layout.promptW).toBeGreaterThanOrEqual(mockMeasure(line) + 20);
+        }
+        expect(layout.promptX).toBeGreaterThanOrEqual(8);
+        expect(layout.promptX + layout.promptW).toBeLessThanOrEqual(room.gridWidth * 32 - 8);
+      }
+    }
+  });
+
+  it("repositions prompt below character when insufficient vertical space exists above", () => {
+    // Character standing very close to top wall (y = 1.0)
+    const topPos = { x: 10, y: 1.0 };
+    const layout = PixelRenderer.calculateCharacterPromptLayout(
+      "Caretaker Sam",
+      topPos,
+      "npc",
+      corridor,
+      0,
+      mockMeasure
+    );
+
+    // Should flip arrow to pointing up, and position prompt below the character
+    expect(layout.arrowDirection).toBe("up");
+    const py = Math.round((topPos.y + 0.9) * 32);
+    expect(layout.promptY).toBeGreaterThanOrEqual(py);
+    expect(layout.promptY).toBeGreaterThanOrEqual(6);
+  });
+
+  it("clamps prompts and indicator arrow near screen edges across all resolutions", () => {
+    // Character right at the left wall (x = 0.5)
+    const leftPos = { x: 0.5, y: 8 };
+    const leftLayout = PixelRenderer.calculateCharacterPromptLayout(
+      "Leo",
+      leftPos,
+      "npc",
+      corridor,
+      0,
+      mockMeasure
+    );
+    expect(leftLayout.promptX).toBeGreaterThanOrEqual(8);
+    expect(leftLayout.arrowX).toBeGreaterThanOrEqual(leftLayout.promptX + 8);
+    expect(leftLayout.arrowX).toBeLessThanOrEqual(leftLayout.promptX + leftLayout.promptW - 8);
+
+    // Character right at the right wall (x = 25.5)
+    const rightPos = { x: 25.5, y: 8 };
+    const rightLayout = PixelRenderer.calculateCharacterPromptLayout(
+      "Leo",
+      rightPos,
+      "npc",
+      corridor,
+      0,
+      mockMeasure
+    );
+    expect(rightLayout.promptX + rightLayout.promptW).toBeLessThanOrEqual(corridor.gridWidth * 32 - 8);
+    expect(rightLayout.arrowX).toBeGreaterThanOrEqual(rightLayout.promptX + 8);
+    expect(rightLayout.arrowX).toBeLessThanOrEqual(rightLayout.promptX + rightLayout.promptW - 8);
+
+    // Viewport bounds check across standard desktop resolutions
+    for (const vp of standardViewports) {
+      for (const npc of HALLWAY_NPCS) {
+        const cam = getCameraTransform(corridor, npc.position, vp.w, vp.h);
+        const layout = PixelRenderer.calculateCharacterPromptLayout(
+          npc.name,
+          npc.position,
+          "npc",
+          corridor,
+          0,
+          mockMeasure,
+          { camX: cam.camX, camY: cam.camY, zoom: cam.zoom, canvasWidth: vp.w, canvasHeight: vp.h }
+        );
+
+        const screenX = layout.promptX * cam.zoom - cam.camX;
+        const screenRight = (layout.promptX + layout.promptW) * cam.zoom - cam.camX;
+        const screenY = layout.promptY * cam.zoom - cam.camY;
+        const screenBottom = (layout.promptY + layout.promptH) * cam.zoom - cam.camY;
+
+        expect(screenX).toBeGreaterThanOrEqual(-4);
+        expect(screenRight).toBeLessThanOrEqual(vp.w + 4);
+        expect(screenY).toBeGreaterThanOrEqual(-4);
+        expect(screenBottom).toBeLessThanOrEqual(vp.h + 4);
+      }
+    }
+  });
+});
+
+
 
 

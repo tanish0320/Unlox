@@ -240,12 +240,13 @@ class WindowsLocalTTSAdapter(BaseTTSAdapter):
 
         duration = measure_wav_duration(output_path)
 
+        effective_voice_id = (voice_id or target_voice).split(chr(92))[-1]
         entry = SceneAudioEntry(
             scene_id=scene_id,
             audio_file=str(output_path.as_posix()),
             duration_seconds=duration,
             language=language,
-            voice_id=f"win_sapi5_{voice_id.split(chr(92))[-1]}",
+            voice_id=f"win_sapi5_{effective_voice_id}",
             sample_rate=22050,
             fallback_used=False,
             caption_segments=[

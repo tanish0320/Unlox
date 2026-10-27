@@ -94,6 +94,8 @@ class MockLessonPlanner:
         else:
             scenes, quiz_questions = self._build_general_scenes(topic_clean, level, target_sec, evidence_sources)
 
+        scenes = self._calibrate_scenes_for_duration(scenes, target_sec)
+
         revision_questions = [
             {"question": q.question, "answer": q.options[q.correct_index]}
             for q in quiz_questions
@@ -117,6 +119,98 @@ class MockLessonPlanner:
             return validated_plan, False
         except ValidationError as err:
             return self.get_fallback_lesson(topic_clean, target_duration_seconds=target_sec), True
+
+    def _calibrate_scenes_for_duration(self, scenes: list, target_sec: int) -> list:
+        """Calibrates scene count and narration word bounds for all target presets."""
+        if target_sec <= 30:
+            target_count = 3
+            target_words = 18
+            max_words = 24
+            min_words = 15
+        elif target_sec <= 45:
+            target_count = 3
+            target_words = 29
+            max_words = 34
+            min_words = 24
+        elif target_sec <= 60:
+            target_count = 3
+            target_words = 42
+            max_words = 48
+            min_words = 36
+        elif target_sec <= 90:
+            target_count = 4
+            target_words = 48
+            max_words = 54
+            min_words = 42
+        elif target_sec <= 120:
+            target_count = 4
+            target_words = 68
+            max_words = 74
+            min_words = 64
+        elif target_sec <= 180:
+            target_count = 5
+            target_words = 80
+            max_words = 85
+            min_words = 77
+        else:  # 240s+
+            target_count = 6
+            target_words = 88
+            max_words = 94
+            min_words = 84
+
+        target_scenes = scenes[:target_count]
+        calibrated = []
+
+        for idx, s in enumerate(target_scenes):
+            s_copy = dict(s)
+            text = s_copy.get("narration", "")
+            words = text.split()
+
+            # Trimming if exceeding max_words
+            if len(words) > max_words + 2:
+                sentences = re.split(r'(?<=[.!?])\s+', text)
+                kept = []
+                cnt = 0
+                for sent in sentences:
+                    w_cnt = len(sent.split())
+                    if cnt + w_cnt <= max_words + 3 or not kept:
+                        kept.append(sent)
+                        cnt += w_cnt
+                    elif cnt < min_words:
+                        kept.append(sent)
+                        cnt += w_cnt
+                        break
+                    else:
+                        break
+                text = " ".join(kept)
+                words = text.split()
+
+            # Expansion if below min_words (only for presets >= 60s)
+            if target_sec >= 60 and len(words) < min_words:
+                heading = s_copy.get("heading", "this core principle")
+                pool = [
+                    f"Examining {heading} with precision highlights how these fundamental elements maintain structural balance.",
+                    "Tracking each stage methodically allows us to connect core definitions directly to observable outcomes.",
+                    "This systematic progression reinforces lasting conceptual retention and reliable problem-solving clarity.",
+                    "By verifying every intermediate step, we ensure complete alignment with established principles.",
+                ]
+                for sentence in pool:
+                    if len(words) >= target_words - 2:
+                        break
+                    text = f"{text.rstrip('.')}! {sentence}" if not text.endswith(('.', '!', '?')) else f"{text} {sentence}"
+                    words = text.split()
+
+                if len(words) > max_words + 3:
+                    sentences = re.split(r'(?<=[.!?])\s+', text)
+                    if len(sentences) > 1:
+                        trimmed = " ".join(sentences[:-1])
+                        if len(trimmed.split()) >= min_words - 3:
+                            text = trimmed
+
+            s_copy["narration"] = text
+            calibrated.append(s_copy)
+
+        return calibrated
 
     def _build_math_scenes(self, topic: str, level: str, target_sec: int, evidence: List[EvidenceSource]) -> Tuple[list, List[QuizQuestion]]:
         """Generates pure visual mathematical scenes (NO code scenes by default)."""
@@ -290,7 +384,7 @@ class MockLessonPlanner:
             },
         ]
 
-        if target_sec >= 120:
+        if target_sec >= 90:
             scenes.append({
                 "id": "scene_04",
                 "type": "diagram",
@@ -521,7 +615,7 @@ class MockLessonPlanner:
             },
         ]
 
-        if target_sec >= 120:
+        if target_sec >= 90:
             scenes.append({
                 "id": "scene_04",
                 "type": "diagram",
@@ -710,7 +804,7 @@ class MockLessonPlanner:
             },
         ]
 
-        if target_sec >= 120:
+        if target_sec >= 90:
             scenes.append({
                 "id": "scene_04",
                 "type": "diagram",
@@ -932,7 +1026,7 @@ class MockLessonPlanner:
             },
         ]
 
-        if target_sec >= 120:
+        if target_sec >= 90:
             scenes.append({
                 "id": "scene_04",
                 "type": "diagram",
@@ -1102,7 +1196,7 @@ class MockLessonPlanner:
             },
         ]
 
-        if target_sec >= 120:
+        if target_sec >= 90:
             scenes.append({
                 "id": "scene_04",
                 "type": "diagram",
@@ -1332,7 +1426,7 @@ class MockLessonPlanner:
             },
         ]
 
-        if target_sec >= 120:
+        if target_sec >= 90:
             scenes.append({
                 "id": "scene_04",
                 "type": "diagram",
@@ -1447,20 +1541,22 @@ class MockLessonPlanner:
             )
         elif target_sec >= 180:
             s1 = (
-                f"Welcome to our scientific investigation into {topic}. "
-                "Living systems capture energy from their environment and convert it into stable chemical bonds. "
-                "To understand how these transformations function, we must track the flow of energy and matter across microscopic structures. "
-                "Today we follow each stage of this biological mechanism to see how nature sustains life on our planet."
+                f"Welcome to our comprehensive scientific masterclass exploring {topic}. "
+                "Living systems and biological cells constantly capture radiant energy from their environment and convert it into stable chemical bonds. "
+                "To understand how these vital energetic transformations function across ecosystems, we must track the flow of energy, matter, and electrons across microscopic thylakoid membranes. "
+                "Today we will follow each step of this biological mechanism to see how nature sustains all complex life on our planet."
             )
             s2 = (
-                "Within the thylakoid membranes of plant cells, chlorophyll pigments absorb incoming photons of sunlight. "
-                "This excitation energy drives the splitting of water molecules through photolysis, releasing breathable oxygen into the atmosphere. "
-                "Simultaneously, ATP and NADPH transfer chemical energy directly to the stroma, where carbon dioxide is fixed into energy-rich glucose."
+                "Within the thylakoid membranes of chloroplasts, specialized chlorophyll pigments absorb incoming photons of solar radiation. "
+                "This excitation energy drives the splitting of water molecules through photolysis, releasing breathable oxygen directly into the atmosphere as a vital byproduct. "
+                "Simultaneously, energized electrons generate adenosine triphosphate and NADPH, which transfer chemical potential energy directly into the stroma for carbon fixation. "
+                "Every molecular protein complex operates with synchronized precision to power this essential biological engine."
             )
             s3 = (
-                "From a chemical perspective, six molecules of carbon dioxide and six molecules of water yield one molecule of glucose and six molecules of oxygen. "
-                "Every single atom of carbon, hydrogen, and oxygen is conserved throughout this transformation, illustrating the law of conservation of mass. "
-                "The synthesized glucose supplies vital metabolic energy not only to the plant itself, but to the entire ecological food chain."
+                "From a stoichiometric chemical perspective, six molecules of carbon dioxide and six molecules of water yield one molecule of glucose and six molecules of oxygen. "
+                "Every single atom of carbon, hydrogen, and oxygen is strictly conserved throughout this multi-step enzymatic transformation, demonstrating the universal law of conservation of mass. "
+                "The synthesized glucose supplies essential cellular energy to the plant while fueling the entire global ecological food web. "
+                "Without this continuous metabolic conversion, aerobic organisms could not survive on Earth."
             )
         elif target_sec >= 120:
             s1 = (
@@ -1565,7 +1661,7 @@ class MockLessonPlanner:
             },
         ]
 
-        if target_sec >= 120:
+        if target_sec >= 90:
             scenes.append({
                 "id": "scene_04",
                 "type": "diagram",
@@ -1730,7 +1826,7 @@ class MockLessonPlanner:
             },
         ]
 
-        if target_sec >= 120:
+        if target_sec >= 90:
             scenes.append({
                 "id": "scene_04",
                 "type": "diagram",
@@ -1949,7 +2045,7 @@ class MockLessonPlanner:
             },
         ]
 
-        if target_sec >= 120:
+        if target_sec >= 90:
             scenes.append({
                 "id": "scene_04",
                 "type": "diagram",
@@ -2110,7 +2206,7 @@ class MockLessonPlanner:
             },
         ]
 
-        if target_sec >= 120:
+        if target_sec >= 90:
             scenes.append({
                 "id": "scene_04",
                 "type": "diagram",
@@ -2279,7 +2375,7 @@ class MockLessonPlanner:
             },
         ]
 
-        if target_sec >= 120:
+        if target_sec >= 90:
             scenes.append({
                 "id": "scene_04",
                 "type": "diagram",

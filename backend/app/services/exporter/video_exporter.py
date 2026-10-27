@@ -31,6 +31,7 @@ Capabilities:
 
 
 import os
+import re
 
 import shutil
 
@@ -300,6 +301,7 @@ class FrameRenderer:
                 self.font_heading = ImageFont.truetype(title_font, 30)
 
                 self.font_body = ImageFont.truetype(nirmala, 22)
+                self.font_small = ImageFont.truetype(nirmala, 16)
 
                 self.font_caption = ImageFont.truetype(nirmala, 22)
 
@@ -312,6 +314,7 @@ class FrameRenderer:
                 self.font_heading = ImageFont.truetype("arial.ttf", 30)
 
                 self.font_body = ImageFont.truetype("arial.ttf", 22)
+                self.font_small = ImageFont.truetype("arial.ttf", 16)
 
                 self.font_caption = ImageFont.truetype("arial.ttf", 22)
 
@@ -326,6 +329,7 @@ class FrameRenderer:
             self.font_heading = ImageFont.load_default()
 
             self.font_body = ImageFont.load_default()
+            self.font_small = ImageFont.load_default()
 
             self.font_code = ImageFont.load_default()
 
@@ -486,89 +490,172 @@ class FrameRenderer:
             return
 
         items = getattr(scene, "items", []) or []
+        if not items and hasattr(scene, "nodes") and scene.nodes:
+            items = [n.get("label", "") if isinstance(n, dict) else getattr(n, "label", str(n)) for n in scene.nodes]
+        elif not items and hasattr(scene, "structured_nodes") and scene.structured_nodes:
+            items = [n.get("label", "") if isinstance(n, dict) else getattr(n, "label", str(n)) for n in scene.structured_nodes]
+
         node_count = len(items)
         if node_count == 0:
             return
 
         active_idx = min(node_count - 1, int(progress * node_count))
 
+        # Check if single row or multi-row layout is needed
+        max_label_len = max([len(item) for item in items], default=0)
+        use_multi_row = (node_count >= 5) or (node_count == 4 and max_label_len > 22)
 
+        def _wrap_label_lines(text: str, max_chars: int = 18) -> list[str]:
+            words = text.strip().split()
+            lines = []
+            curr = ""
+            for w in words:
+                if not curr:
+                    curr = w
+                elif len(curr) + 1 + len(w) <= max_chars:
+                    curr += " " + w
+                else:
+                    lines.append(curr)
+                    curr = w
+            if curr:
+                lines.append(curr)
+            return lines[:3] or [text]
 
-        # Horizontal flowchart layout
+        if not use_multi_row:
+            # Single horizontal row layout with guaranteed non-overlapping spacing
+            total_width = 1100
+            spacing = total_width / (node_count + 1)
+            start_x = (self.width - total_width) // 2
+            cy = 320
+            node_width = max(160, min(230, int(spacing - 35)))
+            node_height = 80
 
-        node_width = 240
+            # Draw arrows between adjacent nodes
+            for i in range(node_count - 1):
+                x1 = int(start_x + spacing * (i + 1) + node_width // 2)
+                x2 = int(start_x + spacing * (i + 2) - node_width // 2)
+                line_color = self.accent_green if i < active_idx else self.border_color
+                if x2 > x1:
+                    draw.line([(x1, cy), (x2, cy)], fill=line_color, width=3)
+                    draw.polygon([(x2, cy), (x2 - 10, cy - 6), (x2 - 10, cy + 6)], fill=line_color)
 
-        node_height = 80
+            # Draw nodes
+            for i, item in enumerate(items):
+                cx = int(start_x + spacing * (i + 1))
+                is_active = (i == active_idx)
+                is_past = (i < active_idx)
+                fill_c = (235, 243, 238) if is_active else self.surface_color
+                stroke_c = self.primary_blue if is_active else (self.accent_green if is_past else self.border_color)
+                w = 3 if is_active else 1
 
-        total_width = 1080
+                left = cx - node_width // 2
+                top = cy - node_height // 2
+                draw.rounded_rectangle([left, top, left + node_width, top + node_height], radius=14, fill=fill_c, outline=stroke_c, width=w)
 
-        spacing = total_width // (node_count + 1)
+                # Indicator dot
+                dot_color = self.primary_blue if is_active else (self.accent_green if is_past else self.text_muted)
+                draw.ellipse([left + 14, cy - 6, left + 26, cy + 6], fill=dot_color)
 
-        start_x = (self.width - total_width) // 2
+                # Wrapped text lines
+                wrapped_lines = _wrap_label_lines(item, max_chars=int(node_width // 10))
+                font = self.font_small if len(wrapped_lines) > 1 else self.font_body
+                line_h = 20 if font == self.font_small else 24
+                total_text_h = len(wrapped_lines) * line_h
+                start_text_y = cy - total_text_h // 2 + line_h // 2
 
-        cy = 320
+                for line_idx, line_str in enumerate(wrapped_lines):
+                    draw.text(
+                        (left + 36, start_text_y + line_idx * line_h),
+                        line_str,
+                        fill=self.text_white if is_active else self.text_muted,
+                        font=font,
+                        anchor="lm"
+                    )
+        else:
+            # 2-Row multi-flow layout with corridor routing preventing any overlapping
+            row1_count = (node_count + 1) // 2
+            row2_count = node_count - row1_count
+            total_width = 1100
+            start_x = (self.width - total_width) // 2
+            spacing1 = total_width / (row1_count + 1)
+            spacing2 = total_width / (row2_count + 1)
+            cy1 = 220
+            cy2 = 420
+            corridor_y = 320
+            node_width = max(150, min(220, int(min(spacing1, spacing2) - 35)))
+            node_height = 80
 
+            # Calculate positions
+            positions = []
+            for i in range(node_count):
+                if i < row1_count:
+                    cx = int(start_x + spacing1 * (i + 1))
+                    cy = cy1
+                    row = 0
+                else:
+                    col = i - row1_count
+                    cx = int(start_x + spacing2 * (col + 1))
+                    cy = cy2
+                    row = 1
+                positions.append((cx, cy, row))
 
+            # Draw connecting lines and arrows
+            for i in range(node_count - 1):
+                from_x, from_y, from_row = positions[i]
+                to_x, to_y, to_row = positions[i + 1]
+                line_color = self.accent_green if i < active_idx else self.border_color
 
-        # Draw connecting lines and arrows
+                if from_row == to_row:
+                    x1 = from_x + node_width // 2
+                    x2 = to_x - node_width // 2
+                    if x2 > x1:
+                        draw.line([(x1, from_y), (x2, from_y)], fill=line_color, width=3)
+                        draw.polygon([(x2, from_y), (x2 - 10, from_y - 6), (x2 - 10, from_y + 6)], fill=line_color)
+                else:
+                    # Transition between Row 1 and Row 2 through empty corridor (corridor_y = 320)
+                    start_pt = (from_x, from_y + node_height // 2)
+                    mid_pt1 = (from_x, corridor_y)
+                    mid_pt2 = (to_x, corridor_y)
+                    end_pt = (to_x, to_y - node_height // 2)
 
-        for i in range(node_count - 1):
+                    draw.line([start_pt, mid_pt1], fill=line_color, width=3)
+                    draw.line([mid_pt1, mid_pt2], fill=line_color, width=3)
+                    draw.line([mid_pt2, end_pt], fill=line_color, width=3)
+                    # Downward arrow head at end_pt
+                    draw.polygon([(end_pt[0], end_pt[1]), (end_pt[0] - 6, end_pt[1] - 10), (end_pt[0] + 6, end_pt[1] - 10)], fill=line_color)
 
-            x1 = start_x + spacing * (i + 1) + node_width // 2
+            # Draw nodes
+            for i, item in enumerate(items):
+                cx, cy, row = positions[i]
+                is_active = (i == active_idx)
+                is_past = (i < active_idx)
+                fill_c = (235, 243, 238) if is_active else self.surface_color
+                stroke_c = self.primary_blue if is_active else (self.accent_green if is_past else self.border_color)
+                w = 3 if is_active else 1
 
-            x2 = start_x + spacing * (i + 2) - node_width // 2
+                left = cx - node_width // 2
+                top = cy - node_height // 2
+                draw.rounded_rectangle([left, top, left + node_width, top + node_height], radius=14, fill=fill_c, outline=stroke_c, width=w)
 
-            line_color = self.accent_green if i < active_idx else self.border_color
+                # Indicator dot
+                dot_color = self.primary_blue if is_active else (self.accent_green if is_past else self.text_muted)
+                draw.ellipse([left + 14, cy - 6, left + 26, cy + 6], fill=dot_color)
 
-            draw.line([(x1, cy), (x2, cy)], fill=line_color, width=3)
+                # Wrapped text lines
+                wrapped_lines = _wrap_label_lines(item, max_chars=int(node_width // 10))
+                font = self.font_small if len(wrapped_lines) > 1 else self.font_body
+                line_h = 20 if font == self.font_small else 24
+                total_text_h = len(wrapped_lines) * line_h
+                start_text_y = cy - total_text_h // 2 + line_h // 2
 
-            # Arrow head
-
-            draw.polygon([(x2, cy), (x2 - 10, cy - 6), (x2 - 10, cy + 6)], fill=line_color)
-
-
-
-        # Draw Nodes
-
-        for i, item in enumerate(items):
-
-            nx = start_x + spacing * (i + 1)
-
-            is_active = (i == active_idx)
-
-            is_past = (i < active_idx)
-
-
-
-            fill_c = (23, 36, 59) if is_active else self.surface_color
-
-            stroke_c = self.primary_blue if is_active else (self.accent_green if is_past else self.border_color)
-
-            w = 3 if is_active else 1
-
-
-
-            left = nx - node_width // 2
-
-            top = cy - node_height // 2
-
-            draw.rounded_rectangle([left, top, left + node_width, top + node_height], radius=14, fill=fill_c, outline=stroke_c, width=w)
-
-
-
-            # Indicator dot
-
-            dot_color = self.primary_blue if is_active else (self.accent_green if is_past else self.text_muted)
-
-            draw.ellipse([left + 16, cy - 6, left + 28, cy + 6], fill=dot_color)
-
-
-
-            # Text label
-
-            label = item if len(item) < 28 else item[:26] + "..."
-
-            draw.text((left + 40, cy), label, fill=self.text_white if is_active else self.text_muted, font=self.font_body, anchor="lm")
+                for line_idx, line_str in enumerate(wrapped_lines):
+                    draw.text(
+                        (left + 36, start_text_y + line_idx * line_h),
+                        line_str,
+                        fill=self.text_white if is_active else self.text_muted,
+                        font=font,
+                        anchor="lm"
+                    )
 
 
 
@@ -1123,23 +1210,19 @@ def verify_video_file(video_path: Path) -> Dict[str, any]:
 
     has_720p = "1280x720" in info
 
-
+    duration = 0.0
+    match = re.search(r"Duration:\s*(\d+):(\d+):(\d+\.?\d*)", info)
+    if match:
+        h, m, s = match.groups()
+        duration = round(int(h) * 3600 + int(m) * 60 + float(s), 3)
 
     return {
-
         "valid": has_h264 and has_720p,
-
         "path": str(video_path),
-
         "size_bytes": video_path.stat().st_size,
-
         "is_h264": has_h264,
-
         "is_aac": has_aac,
-
         "is_1280x720": has_720p,
-
+        "duration": duration,
         "raw_info_snippet": info[:600]
-
     }
-

@@ -277,6 +277,7 @@ def get_tts_voices():
 
 
 @app.post("/api/lessons/generate")
+@app.post("/api/generate")
 def generate_lesson(req: GenerateRequest, background_tasks: BackgroundTasks):
     """Enqueues a new lesson generation request and returns the job tracker ID."""
     job_id = str(uuid.uuid4())[:8]
@@ -519,6 +520,13 @@ def get_fixture_captions():
     if fixture_srt.is_file():
         return FileResponse(str(fixture_srt), media_type="text/plain", filename="sample_lesson.srt")
     raise HTTPException(status_code=404, detail="Fixture captions not found")
+
+
+@app.get("/api/tts/voices")
+def get_tts_voices():
+    """Returns verified real availability of local voice models for all supported languages."""
+    dispatcher = LocalTTSDispatcher()
+    return dispatcher.get_supported_voices()
 
 
 @app.get("/api/audio/{lesson_id}/{filename}")

@@ -26,7 +26,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
   const [dimensions, setDimensions] = useState<{ width: number; height: number }>({
     width: typeof window !== "undefined" ? window.innerWidth : 1280,
-    height: typeof window !== "undefined" ? window.innerHeight : 720,
+    height: typeof window !== "undefined" ? Math.max(300, window.innerHeight - 60) : 660,
   });
 
   // Track parent container resize to keep canvas buffer matching screen dimensions
@@ -36,7 +36,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       if (!container) return;
       const rect = container.getBoundingClientRect();
       const w = Math.floor(rect.width || window.innerWidth || 1280);
-      const h = Math.floor(rect.height || window.innerHeight || 720);
+      const h = Math.floor(rect.height || Math.max(300, window.innerHeight - 60) || 660);
       if (w > 0 && h > 0) {
         setDimensions((prev) => (prev.width === w && prev.height === h ? prev : { width: w, height: h }));
       }

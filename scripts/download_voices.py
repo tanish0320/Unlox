@@ -40,6 +40,22 @@ VOICE_CATALOG = {
             ("https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx", "kokoro-v1.0.onnx"),
             ("https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin", "voices-v1.0.bin"),
         ]
+    },
+    "ta": {
+        "name": "Tamil (Rasa Female)",
+        "folder": "ta_IN",
+        "files": [
+            ("https://huggingface.co/tinisoft/piper-ta_IN-rasa_female-medium/resolve/main/ta_IN-rasa_female-medium.onnx", "ta_IN-rasa_female-medium.onnx"),
+            ("https://huggingface.co/tinisoft/piper-ta_IN-rasa_female-medium/resolve/main/ta_IN-rasa_female-medium.onnx.json", "ta_IN-rasa_female-medium.onnx.json"),
+        ]
+    },
+    "kn": {
+        "name": "Kannada (SYSPIN Male)",
+        "folder": "kn_IN",
+        "files": [
+            ("https://huggingface.co/micahchoo/piper-kn/resolve/main/kn_IN-syspin_male-medium.onnx", "kn_IN-syspin_male-medium.onnx"),
+            ("https://huggingface.co/micahchoo/piper-kn/resolve/main/kn_IN-syspin_male-medium.onnx.json", "kn_IN-syspin_male-medium.onnx.json"),
+        ]
     }
 }
 
@@ -90,7 +106,7 @@ def download_voice(key: str):
 
 def main():
     parser = argparse.ArgumentParser(description="Download voice models for Blu Visual Teacher")
-    parser.add_argument("--language", "-l", choices=["hi", "te", "kokoro"], help="Voice target to download")
+    parser.add_argument("--language", "-l", choices=["hi", "te", "kokoro", "ta", "kn"], help="Voice target to download")
     parser.add_argument("--all", action="store_true", help="Download all available voices")
     args = parser.parse_args()
 

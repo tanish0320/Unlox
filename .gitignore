@@ -24,6 +24,8 @@ outputs/audio/
 outputs/test_run/
 outputs/generated/
 outputs/stage2_tests/
+outputs/test_tts_samples/
+outputs/trace_duration_report.json
 outputs/verification_screenshot.png
 *.db
 Screenshot *.png

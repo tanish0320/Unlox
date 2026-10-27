@@ -308,8 +308,11 @@ export const DialogueOverlay: React.FC<DialogueOverlayProps> = ({
               >
                 <option value={30}>30 seconds</option>
                 <option value={45}>45 seconds</option>
-                <option value={60}>60 seconds</option>
+                <option value={60}>60 seconds (1 minute)</option>
                 <option value={90}>90 seconds</option>
+                <option value={120}>2 minutes (120 seconds)</option>
+                <option value={180}>3 minutes (180 seconds)</option>
+                <option value={240}>4 minutes (240 seconds)</option>
               </select>
             </div>
           </div>

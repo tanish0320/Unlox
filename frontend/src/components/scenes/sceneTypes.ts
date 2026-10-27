@@ -268,6 +268,7 @@ export interface AudioManifest {
   lesson_id?: string;
   language?: string;
   total_duration_seconds?: number;
+  total_timeline_duration_seconds?: number;
   entries: AudioManifestEntry[];
   fallback_used?: boolean;
 }

@@ -10,14 +10,16 @@ from backend.app.services.planner.ollama_planner import OllamaLessonPlanner
 
 
 @pytest.mark.parametrize("preset,expected_scenes,min_words,max_words", [
+    (30, 3, 45, 75),
+    (45, 3, 75, 105),
     (60, 3, 120, 160),
+    (90, 4, 180, 255),
     (120, 4, 260, 320),
     (180, 5, 390, 440),
     (240, 6, 480, 550),
-    (300, 6, 580, 680),
 ])
 def test_all_duration_presets_ratio(preset, expected_scenes, min_words, max_words):
-    """Verify Ratio lesson scales scenes and word counts across all supported presets."""
+    """Verify Ratio lesson scales scenes and word counts across all seven duration presets."""
     planner = MockLessonPlanner()
     plan, fallback = planner.plan_lesson(
         topic="Explain Ratio and proportion",
@@ -36,11 +38,13 @@ def test_all_duration_presets_ratio(preset, expected_scenes, min_words, max_word
 
 
 @pytest.mark.parametrize("preset,expected_scenes", [
+    (30, 3),
+    (45, 3),
     (60, 3),
+    (90, 4),
     (120, 4),
     (180, 5),
     (240, 6),
-    (300, 6),
 ])
 @pytest.mark.parametrize("topic", [
     "How do plants use photosynthesis?",
@@ -49,7 +53,7 @@ def test_all_duration_presets_ratio(preset, expected_scenes, min_words, max_word
     "Understanding the Water Cycle",
 ])
 def test_all_duration_presets_all_subjects(preset, expected_scenes, topic):
-    """Verify science, programming, social studies, and general topics all scale correctly."""
+    """Verify science, programming, social studies, and general topics all scale correctly across all 7 presets."""
     planner = MockLessonPlanner()
     plan, fallback = planner.plan_lesson(
         topic=topic,
@@ -61,9 +65,9 @@ def test_all_duration_presets_all_subjects(preset, expected_scenes, topic):
     assert plan.target_duration_seconds == preset
     assert len(plan.scenes) == expected_scenes
 
-    # Ensure each scene has meaningful educational narration (at least 25 words)
+    # Ensure each scene has meaningful educational narration (at least 12 words)
     for scene in plan.scenes:
-        assert len(scene.narration.split()) >= 25
+        assert len(scene.narration.split()) >= 12
 
 
 def test_ollama_fallback_preserves_target_duration():

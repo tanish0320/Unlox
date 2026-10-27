@@ -12,14 +12,80 @@ import {
   deterministicPulse,
 } from "./animationUtils";
 
-interface NodePosition {
+export interface NodePosition {
   id: string;
   label: string;
   x: number;
   y: number;
   width: number;
   height: number;
+  lines: string[];
+  fontSize: number;
   index: number;
+  row?: number;
+  col?: number;
+}
+
+export interface EdgeLayout {
+  id: string;
+  from: NodePosition;
+  to: NodePosition;
+  label?: string;
+  pathData: string;
+  midX: number;
+  midY: number;
+  isBackEdge: boolean;
+  index: number;
+}
+
+/**
+ * Intelligent text line-wrapping ensuring labels never overflow node boundaries.
+ */
+export function wrapLabel(label: string, maxCharsPerLine: number = 22): string[] {
+  if (!label) return [];
+  const words = label.trim().split(/\s+/);
+  const lines: string[] = [];
+  let currentLine = "";
+
+  for (const word of words) {
+    if (!currentLine) {
+      currentLine = word;
+    } else if ((currentLine + " " + word).length <= maxCharsPerLine) {
+      currentLine += " " + word;
+    } else {
+      lines.push(currentLine);
+      currentLine = word;
+    }
+  }
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+  return lines.length > 0 ? lines : [label];
+}
+
+/**
+ * Calculates dynamic node dimensions based on wrapped text, ensuring minimum spacing.
+ */
+function computeNodeDimensions(
+  label: string,
+  availableSlotWidth: number,
+  maxAvailableHeight: number = 100
+): { width: number; height: number; lines: string[]; fontSize: number } {
+  const maxChars = availableSlotWidth < 220 ? 17 : availableSlotWidth < 270 ? 21 : 25;
+  const lines = wrapLabel(label, maxChars);
+  const fontSize = lines.length <= 2 ? 14 : lines.length === 3 ? 13 : 12;
+  const lineHeight = fontSize + 5;
+
+  const maxLineLen = Math.max(...lines.map((l) => l.length), 0);
+  const charWidth = fontSize * 0.58;
+  const textWidth = maxLineLen * charWidth + 64; // 36px badge + 28px side padding
+
+  const maxAllowedWidth = Math.max(160, availableSlotWidth - 32);
+  const width = Math.min(maxAllowedWidth, Math.max(170, Math.round(textWidth)));
+  const baseHeight = 36 + lines.length * lineHeight;
+  const height = Math.min(maxAvailableHeight, Math.max(54, Math.round(baseHeight)));
+
+  return { width, height, lines, fontSize };
 }
 
 export const DiagramSceneComponent: React.FC<DiagramSceneProps> = ({
@@ -37,7 +103,7 @@ export const DiagramSceneComponent: React.FC<DiagramSceneProps> = ({
 
   const progress = normalizedProgress(resolvedTime, resolvedDuration);
 
-  // Unify nodes and edges: support both explicit nodes/edges AND problem-statement items/structured_nodes
+  // Unify nodes and edges: support explicit nodes/edges AND problem-statement items/structured_nodes
   const { rawNodes, rawEdges } = useMemo(() => {
     let nodes: DiagramNode[] = scene.nodes || [];
     let edges: DiagramEdge[] = scene.edges || [];
@@ -70,9 +136,6 @@ export const DiagramSceneComponent: React.FC<DiagramSceneProps> = ({
     const nodeCount = rawNodes.length;
     if (nodeCount === 0) return { nodes: [], edges: [] };
 
-    const nodeWidth = 240;
-    const nodeHeight = 76;
-
     const hasBackEdge = rawEdges.some((edge) => {
       const fromIdx = rawNodes.findIndex((n) => n.id === edge.from);
       const toIdx = rawNodes.findIndex((n) => n.id === edge.to);
@@ -80,90 +143,202 @@ export const DiagramSceneComponent: React.FC<DiagramSceneProps> = ({
     });
 
     const isLoop = scene.layout === "loop" || scene.layout === "cycle" || (hasBackEdge && nodeCount >= 3);
+    const isVertical = scene.layout === "vertical";
     const positions: NodePosition[] = [];
 
+    const maxLabelLen = Math.max(...rawNodes.map((n) => n.label.length), 0);
+
     if (isLoop && nodeCount >= 3) {
+      // Symmetrical elliptical loop layout
       const centerX = 640;
-      const centerY = 370;
-      const radiusX = nodeCount === 3 ? 320 : 360;
-      const radiusY = nodeCount === 3 ? 160 : 170;
+      const centerY = 285;
+      const radiusX = nodeCount === 3 ? 310 : 350;
+      const radiusY = nodeCount === 3 ? 145 : 160;
+      const slotWidth = 240;
 
       rawNodes.forEach((node, idx) => {
+        const dims = computeNodeDimensions(node.label, slotWidth, 90);
         const angle = -Math.PI / 2 + (idx * 2 * Math.PI) / nodeCount;
         positions.push({
           id: node.id,
           label: node.label,
           x: Math.round(centerX + radiusX * Math.cos(angle)),
           y: Math.round(centerY + radiusY * Math.sin(angle)),
-          width: nodeWidth,
-          height: nodeHeight,
+          width: dims.width,
+          height: dims.height,
+          lines: dims.lines,
+          fontSize: dims.fontSize,
           index: idx,
         });
       });
-    } else if (nodeCount <= 4) {
-      const centerY = 370;
-      const totalWidth = 1100;
-      const spacing = totalWidth / (nodeCount + 1);
-      const startX = (1280 - totalWidth) / 2;
+    } else if (isVertical) {
+      // Clean vertical stepped layout
+      const centerX = 640;
+      const totalHeight = 400;
+      const spacing = totalHeight / (nodeCount + 1);
+      const startY = 80;
+      const slotWidth = 360;
 
       rawNodes.forEach((node, idx) => {
+        const dims = computeNodeDimensions(node.label, slotWidth, 80);
+        positions.push({
+          id: node.id,
+          label: node.label,
+          x: centerX,
+          y: Math.round(startY + spacing * (idx + 1)),
+          width: dims.width,
+          height: dims.height,
+          lines: dims.lines,
+          fontSize: dims.fontSize,
+          index: idx,
+        });
+      });
+    } else if (nodeCount <= 3 || (nodeCount === 4 && maxLabelLen <= 22)) {
+      // Single horizontal row layout with generous inter-node breathing room
+      const centerY = 285;
+      const totalWidth = 1120;
+      const spacing = totalWidth / (nodeCount + 1);
+      const startX = 80;
+      const slotWidth = Math.round(spacing);
+
+      rawNodes.forEach((node, idx) => {
+        const dims = computeNodeDimensions(node.label, slotWidth, 90);
         positions.push({
           id: node.id,
           label: node.label,
           x: Math.round(startX + spacing * (idx + 1)),
           y: centerY,
-          width: nodeWidth,
-          height: nodeHeight,
+          width: dims.width,
+          height: dims.height,
+          lines: dims.lines,
+          fontSize: dims.fontSize,
           index: idx,
+          row: 0,
+          col: idx,
         });
       });
     } else {
+      // 2-row multi-flow layout with wide corridor between rows preventing collision
       const row1Count = Math.ceil(nodeCount / 2);
       const row2Count = nodeCount - row1Count;
+      const totalWidth = 1120;
+      const startX = 80;
+
+      const spacing1 = totalWidth / (row1Count + 1);
+      const spacing2 = totalWidth / (row2Count + 1);
 
       rawNodes.forEach((node, idx) => {
         if (idx < row1Count) {
-          const spacing = 1100 / (row1Count + 1);
+          const dims = computeNodeDimensions(node.label, Math.round(spacing1), 84);
           positions.push({
             id: node.id,
             label: node.label,
-            x: Math.round(90 + spacing * (idx + 1)),
-            y: 280,
-            width: nodeWidth,
-            height: nodeHeight,
+            x: Math.round(startX + spacing1 * (idx + 1)),
+            y: 185,
+            width: dims.width,
+            height: dims.height,
+            lines: dims.lines,
+            fontSize: dims.fontSize,
             index: idx,
+            row: 0,
+            col: idx,
           });
         } else {
           const colIdx = idx - row1Count;
-          const spacing = 1100 / (row2Count + 1);
+          const dims = computeNodeDimensions(node.label, Math.round(spacing2), 84);
           positions.push({
             id: node.id,
             label: node.label,
-            x: Math.round(90 + spacing * (colIdx + 1)),
-            y: 440,
-            width: nodeWidth,
-            height: nodeHeight,
+            x: Math.round(startX + spacing2 * (colIdx + 1)),
+            y: 395,
+            width: dims.width,
+            height: dims.height,
+            lines: dims.lines,
+            fontSize: dims.fontSize,
             index: idx,
+            row: 1,
+            col: colIdx,
           });
         }
       });
     }
 
     const nodeMap = new Map(positions.map((p) => [p.id, p]));
-    const validEdges = rawEdges
-      .map((edge, idx) => {
-        const fromNode = nodeMap.get(edge.from);
-        const toNode = nodeMap.get(edge.to);
-        if (!fromNode || !toNode) return null;
-        return {
-          id: `edge-${idx}-${edge.from}-${edge.to}`,
-          from: fromNode,
-          to: toNode,
-          label: edge.label,
-          index: idx,
-        };
-      })
-      .filter((e): e is NonNullable<typeof e> => e !== null);
+    const validEdges: EdgeLayout[] = [];
+
+    rawEdges.forEach((edge, idx) => {
+      const from = nodeMap.get(edge.from);
+      const to = nodeMap.get(edge.to);
+      if (!from || !to) return;
+
+      const isBackEdge = to.index <= from.index;
+      let pathData = "";
+      let midX = (from.x + to.x) / 2;
+      let midY = (from.y + to.y) / 2;
+
+      if (isLoop && nodeCount >= 3) {
+        const centerX = 640;
+        const centerY = 285;
+        const angleFrom = Math.atan2(from.y - centerY, from.x - centerX);
+        const angleTo = Math.atan2(to.y - centerY, to.x - centerX);
+        const startX = from.x + (Math.cos(angleFrom) * from.width) / 2;
+        const startY = from.y + (Math.sin(angleFrom) * from.height) / 2;
+        const endX = to.x - (Math.cos(angleTo) * to.width) / 2;
+        const endY = to.y - (Math.sin(angleTo) * to.height) / 2;
+
+        const midAngle = (angleFrom + angleTo) / 2;
+        const cpX = centerX + Math.cos(midAngle) * (350 + 20);
+        const cpY = centerY + Math.sin(midAngle) * (160 + 20);
+        pathData = `M ${startX} ${startY} Q ${cpX} ${cpY} ${endX} ${endY}`;
+        midX = cpX;
+        midY = cpY;
+      } else if (from.row !== undefined && to.row !== undefined && from.row !== to.row) {
+        // Inter-row transition: routes through empty middle corridor (Y ≈ 290)
+        const startX = from.x;
+        const startY = from.y + from.height / 2;
+        const endX = to.x;
+        const endY = to.y - to.height / 2;
+        const corridorY = Math.round((from.y + to.y) / 2);
+
+        pathData = `M ${startX} ${startY} C ${startX} ${corridorY}, ${endX} ${corridorY}, ${endX} ${endY}`;
+        midX = (startX + endX) / 2;
+        midY = corridorY;
+      } else if (isBackEdge) {
+        const curveOffset = 70;
+        const startX = from.x;
+        const startY = from.y + from.height / 2;
+        const endX = to.x;
+        const endY = to.y + to.height / 2;
+        const cpY = Math.max(startY, endY) + curveOffset;
+        pathData = `M ${startX} ${startY} Q ${midX} ${cpY} ${endX} ${endY}`;
+        midY = cpY - 20;
+      } else {
+        // Standard horizontal / vertical connector
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        const angle = Math.atan2(dy, dx);
+        const startX = from.x + (Math.cos(angle) * from.width) / 2;
+        const startY = from.y + (Math.sin(angle) * from.height) / 2;
+        const endX = to.x - (Math.cos(angle) * to.width) / 2;
+        const endY = to.y - (Math.sin(angle) * to.height) / 2;
+
+        pathData = `M ${startX} ${startY} L ${endX} ${endY}`;
+        midX = (startX + endX) / 2;
+        midY = (startY + endY) / 2;
+      }
+
+      validEdges.push({
+        id: `edge-${idx}-${edge.from}-${edge.to}`,
+        from,
+        to,
+        label: edge.label,
+        pathData,
+        midX,
+        midY,
+        isBackEdge,
+        index: idx,
+      });
+    });
 
     return { nodes: positions, edges: validEdges };
   }, [rawNodes, rawEdges, scene.layout]);
@@ -238,31 +413,7 @@ export const DiagramSceneComponent: React.FC<DiagramSceneProps> = ({
             </defs>
 
             {layout.edges.map((edge) => {
-              const { from, to, label } = edge;
-
-              const dx = to.x - from.x;
-              const dy = to.y - from.y;
-              const angle = Math.atan2(dy, dx);
-
-              const startX = from.x + (Math.cos(angle) * from.width) / 2;
-              const startY = from.y + (Math.sin(angle) * from.height) / 2;
-              const endX = to.x - (Math.cos(angle) * to.width) / 2;
-              const endY = to.y - (Math.sin(angle) * to.height) / 2;
-
-              const isBackEdge = to.index <= from.index;
-              let pathData = "";
-              let midX = (startX + endX) / 2;
-              let midY = (startY + endY) / 2;
-
-              if (isBackEdge) {
-                const curveOffset = 90;
-                const cpX = midX;
-                const cpY = Math.max(startY, endY) + curveOffset;
-                pathData = `M ${startX} ${startY} Q ${cpX} ${cpY} ${endX} ${endY}`;
-                midY = cpY - 40;
-              } else {
-                pathData = `M ${startX} ${startY} L ${endX} ${endY}`;
-              }
+              const { from, to, label, pathData, midX, midY } = edge;
 
               const edgeRevealProgress = staggeredProgress(
                 progress,
@@ -270,8 +421,7 @@ export const DiagramSceneComponent: React.FC<DiagramSceneProps> = ({
                 layout.nodes.length,
                 0.25
               );
-              const isEdgeActive =
-                from.index === activeIndex || to.index === activeIndex;
+              const isEdgeActive = from.index === activeIndex || to.index === activeIndex;
               const isEdgePast = to.index <= activeIndex;
 
               return (
@@ -352,6 +502,10 @@ export const DiagramSceneComponent: React.FC<DiagramSceneProps> = ({
                 ? "#FAF7F2"
                 : "#FFFFFF";
 
+              const lineHeight = node.fontSize + 5;
+              const startY = -((node.lines.length - 1) * lineHeight) / 2 + 5;
+              const textCenterX = 10;
+
               return (
                 <g
                   key={node.id}
@@ -372,6 +526,7 @@ export const DiagramSceneComponent: React.FC<DiagramSceneProps> = ({
                     className="blu-diagram-node-rect"
                   />
 
+                  {/* Node State Icon Badge */}
                   {isPast ? (
                     <g transform={`translate(${-node.width / 2 + 20}, 0)`}>
                       <circle cx="0" cy="0" r="10" fill="rgba(52, 211, 153, 0.2)" />
@@ -407,17 +562,27 @@ export const DiagramSceneComponent: React.FC<DiagramSceneProps> = ({
                     </g>
                   )}
 
+                  {/* Wrapped Multiline Node Label */}
                   <text
-                    x={8}
-                    y={5}
+                    x={textCenterX}
+                    y={startY}
                     textAnchor="middle"
                     className="blu-diagram-label"
                     style={{
                       fill: isActive ? "#234E3C" : isPast ? "#1C2B38" : "#64748B",
                       fontWeight: isActive ? 700 : 600,
+                      fontSize: node.fontSize,
                     }}
                   >
-                    {node.label}
+                    {node.lines.map((line, lIdx) => (
+                      <tspan
+                        key={lIdx}
+                        x={textCenterX}
+                        dy={lIdx === 0 ? 0 : lineHeight}
+                      >
+                        {line}
+                      </tspan>
+                    ))}
                   </text>
                 </g>
               );

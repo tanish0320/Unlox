@@ -1,8 +1,31 @@
-import { ClassroomDef, Direction, Position, TeacherDef, RoomId } from "../types";
+import { ClassroomDef, Direction, Position, TeacherDef, RoomId, DoorDef } from "../types";
 import { CollisionSystem } from "./CollisionSystem";
 import { NPCState } from "./NPCManager";
 
 export const TILE_SIZE = 32;
+
+export interface DoorPromptLayout {
+  lines: string[];
+  promptW: number;
+  promptH: number;
+  promptX: number;
+  promptY: number;
+  accentColor: string;
+}
+
+export interface CharacterPromptLayout {
+  lines: string[];
+  promptW: number;
+  promptH: number;
+  promptX: number;
+  promptY: number;
+  arrowX: number;
+  arrowDirection: "down" | "up";
+  bgColor: string;
+  borderColor: string;
+  line1Color: string;
+  line2Color: string;
+}
 
 export interface RenderContext {
   ctx: CanvasRenderingContext2D;
@@ -108,7 +131,13 @@ export class PixelRenderer {
     this.drawFloorFurniture(ctx, room, rc.animTick);
 
     // 5. Doorways & Redesigned Classroom Signboards
-    this.drawDoorsAndSignboards(ctx, room, rc.playerPos, rc.animTick);
+    this.drawDoorsAndSignboards(ctx, room, rc.playerPos, rc.animTick, {
+      camX,
+      camY,
+      zoom,
+      canvasWidth,
+      canvasHeight,
+    });
 
     // 6. NPCs (Seated students, wandering peers, visiting scholars)
     if (rc.npcs && rc.npcs.length > 0) {
@@ -131,10 +160,18 @@ export class PixelRenderer {
     );
 
     // 9. Floating Prompts & Speech Bubbles
+    const camTransform = {
+      camX,
+      camY,
+      zoom,
+      canvasWidth,
+      canvasHeight,
+    };
+
     if (rc.isNearTeacher && room.teacher) {
-      this.drawTeacherPrompt(ctx, room.teacher, rc.animTick);
+      this.drawTeacherPrompt(ctx, room.teacher, room, rc.animTick, camTransform);
     } else if (rc.nearNPC) {
-      this.drawNPCPrompt(ctx, rc.nearNPC, rc.animTick);
+      this.drawNPCPrompt(ctx, rc.nearNPC, room, rc.animTick, camTransform);
     }
 
     // 10. Developer Collision Debug Mode (enabled via ?debugCollisions=1)
@@ -361,11 +398,252 @@ export class PixelRenderer {
   // -------------------------------------------------------------
   // DOORS & REDESIGNED CLASSROOM SIGNBOARDS (PART 4)
   // -------------------------------------------------------------
+  // SHARED PROMPT SIZING & BOUNDARY CLAMPING UTILITIES
+  // -------------------------------------------------------------
+  /**
+   * Shared boundary clamping helper for interaction prompts (doorways, NPCs, teachers).
+   * Clamps world coordinates within room borders and visible camera viewport margins.
+   */
+  static clampPromptBounds(
+    initialX: number,
+    initialY: number,
+    promptW: number,
+    promptH: number,
+    room?: ClassroomDef,
+    cam?: { camX: number; camY: number; zoom: number; canvasWidth: number; canvasHeight: number }
+  ): { x: number; y: number; minSafeX: number; maxSafeX: number; minSafeY: number; maxSafeY: number } {
+    const gridW = room?.gridWidth || 26;
+    const gridH = room?.gridHeight || 18;
+
+    const minRoomX = 8;
+    const maxRoomX = gridW * TILE_SIZE - promptW - 8;
+    const minRoomY = 6;
+    const maxRoomY = gridH * TILE_SIZE - promptH - 6;
+
+    let minSafeX = minRoomX;
+    let maxSafeX = maxRoomX;
+    let minSafeY = minRoomY;
+    let maxSafeY = maxRoomY;
+
+    if (cam && cam.zoom > 0) {
+      const visMinX = Math.round((cam.camX + 8) / cam.zoom);
+      const visMaxX = Math.round((cam.camX + cam.canvasWidth - 8) / cam.zoom - promptW);
+      const visMinY = Math.round((cam.camY + 8) / cam.zoom);
+      const visMaxY = Math.round((cam.camY + cam.canvasHeight - 8) / cam.zoom - promptH);
+
+      if (visMinX <= visMaxX) {
+        minSafeX = Math.max(minRoomX, visMinX);
+        maxSafeX = Math.min(maxRoomX, visMaxX);
+      }
+      if (visMinY <= visMaxY) {
+        minSafeY = Math.max(minRoomY, visMinY);
+        maxSafeY = Math.min(maxRoomY, visMaxY);
+      }
+    }
+
+    let x = initialX;
+    let y = initialY;
+
+    if (minSafeX <= maxSafeX) {
+      x = Math.max(minSafeX, Math.min(maxSafeX, x));
+    }
+    if (minSafeY <= maxSafeY) {
+      y = Math.max(minSafeY, Math.min(maxSafeY, y));
+    }
+
+    return { x, y, minSafeX, maxSafeX, minSafeY, maxSafeY };
+  }
+
+  /**
+   * Computes dynamic, non-overflowing dimensions, line wrapping, and screen/room boundary clamping
+   * for interaction prompts when approaching classroom doors or exits.
+   */
+  static calculateDoorPromptLayout(
+    door: DoorDef,
+    room: ClassroomDef,
+    signCenterX: number,
+    measureTextWidth?: (text: string, font: string) => number,
+    cam?: { camX: number; camY: number; zoom: number; canvasWidth: number; canvasHeight: number }
+  ): DoorPromptLayout {
+    const isCorridor = room.id === "corridor";
+    const isTopDoor = door.triggerArea.y < 5;
+
+    // Extract mainTitle from door label
+    let mainTitle = "CLASSROOM";
+    if (door.label) {
+      const match = door.label.match(/^(.*?)\s*\[(.*?)\]$/);
+      if (match) {
+        mainTitle = match[1].trim().toUpperCase();
+      } else {
+        mainTitle = door.label.toUpperCase();
+      }
+    }
+
+    // Faculty accent color
+    let accentColor = "#F59E0B";
+    if (door.targetRoom === "maths") accentColor = "#F59E0B";
+    else if (door.targetRoom === "cs") accentColor = "#0284C7";
+    else if (door.targetRoom === "physics") accentColor = "#8B5CF6";
+    else if (door.targetRoom === "chemistry") accentColor = "#10B981";
+    else if (door.targetRoom === "biology") accentColor = "#22C55E";
+    else if (door.targetRoom === "social") accentColor = "#D97706";
+    else if (door.targetRoom === "corridor") accentColor = "#0D9488";
+
+    const dirKey = isCorridor ? (isTopDoor ? "[W] or [↑]" : "[S] or [↓]") : "[Step Through]";
+    const actionLabel = isCorridor ? `Enter ${mainTitle}` : "Return to Hallway";
+    const singleLineCandidate = `${dirKey} ${actionLabel}`;
+
+    // Approximate width fallback if canvas measureText isn't available
+    const defaultMeasure = (str: string) => str.length * 6.2;
+    const measure = measureTextWidth || defaultMeasure;
+
+    const font = "bold 9.5px sans-serif";
+    const singleLineW = measure(singleLineCandidate, font);
+
+    // Responsive line wrapping: If the single line candidate exceeds compact width (> 135px),
+    // cleanly format across 2 lines to prevent text clipping and preserve readability.
+    let lines: string[];
+    if (singleLineW <= 135) {
+      lines = [singleLineCandidate];
+    } else {
+      lines = isCorridor
+        ? [`${dirKey} Enter`, mainTitle]
+        : [dirKey, "Return to Hallway"];
+    }
+
+    // Measure maximum line width to guarantee adequate horizontal breathing room
+    const maxLineW = Math.max(...lines.map((l) => measure(l, font)));
+    const horizontalPadding = 24; // 12px padding on each side
+    const promptW = Math.max(140, Math.ceil(maxLineW + horizontalPadding));
+    const promptH = lines.length === 1 ? 22 : 36;
+
+    // Center horizontally on door signboard
+    const initialX = Math.round(signCenterX - promptW / 2);
+
+    // Position vertically relative to doorway
+    let initialY = 0;
+    if (isTopDoor) {
+      // Top wall doorway: place prompt directly below doorway opening
+      initialY = Math.round((door.triggerArea.y + door.triggerArea.height + 0.25) * TILE_SIZE);
+    } else {
+      // Bottom wall doorway: place prompt cleanly above doorway/signboard
+      const baseSignY = isCorridor ? 464 : 368;
+      initialY = baseSignY - promptH - 4;
+    }
+
+    const clamped = PixelRenderer.clampPromptBounds(initialX, initialY, promptW, promptH, room, cam);
+
+    return {
+      lines,
+      promptW,
+      promptH,
+      promptX: clamped.x,
+      promptY: clamped.y,
+      accentColor,
+    };
+  }
+
+  /**
+   * Computes dynamic, non-overflowing dimensions, line wrapping, indicator arrow alignment,
+   * and viewport/room boundary clamping for NPC and Teacher interaction prompts.
+   */
+  static calculateCharacterPromptLayout(
+    characterName: string,
+    position: Position,
+    type: "npc" | "teacher",
+    room?: ClassroomDef,
+    animTick: number = 0,
+    measureTextWidth?: (text: string, font: string) => number,
+    cam?: { camX: number; camY: number; zoom: number; canvasWidth: number; canvasHeight: number }
+  ): CharacterPromptLayout {
+    const isTeacher = type === "teacher";
+    const actionPrefix = isTeacher ? "[E] Speak with" : "[E] Talk with";
+    const singleLineCandidate = `${actionPrefix} ${characterName}`;
+
+    const font = "bold 9.5px sans-serif";
+    const defaultMeasure = (str: string) => str.length * 6.2;
+    const measure = measureTextWidth || defaultMeasure;
+
+    const singleLineW = measure(singleLineCandidate, font);
+
+    // Responsive line wrapping: If the single line candidate exceeds compact threshold (> 130px),
+    // cleanly format across 2 lines so the character name sits comfortably on line 2.
+    let lines: string[];
+    if (singleLineW <= 130) {
+      lines = [singleLineCandidate];
+    } else {
+      lines = [actionPrefix, characterName];
+    }
+
+    // Measure maximum line width to guarantee adequate horizontal breathing room
+    const maxLineW = Math.max(...lines.map((l) => measure(l, font)));
+    const horizontalPadding = 24; // 12px padding on each side
+    const promptW = Math.max(118, Math.ceil(maxLineW + horizontalPadding));
+    const promptH = lines.length === 1 ? 22 : 36;
+
+    // Character center X and base Y in world pixels
+    const px = Math.round((position.x + 0.5) * TILE_SIZE);
+    const py = Math.round((position.y + 0.9) * TILE_SIZE);
+    const bounce = Math.sin(animTick * 0.12) * (isTeacher ? 3 : 2);
+
+    // Compute boundary safety margins
+    const bounds = PixelRenderer.clampPromptBounds(0, 0, promptW, promptH, room, cam);
+
+    // Check if prompt fits above character (preferred location)
+    const promptAboveY = Math.round(py - 40 - promptH - 5 + bounce);
+    const fitsAbove = promptAboveY >= bounds.minSafeY;
+
+    let targetY = 0;
+    let arrowDirection: "down" | "up" = "down";
+
+    if (fitsAbove) {
+      targetY = promptAboveY;
+      arrowDirection = "down";
+    } else {
+      // Reposition below character when insufficient vertical space exists above
+      targetY = Math.round(py + 8 + bounce);
+      arrowDirection = "up";
+    }
+
+    const initialX = Math.round(px - promptW / 2);
+    const clamped = PixelRenderer.clampPromptBounds(initialX, targetY, promptW, promptH, room, cam);
+    const promptX = clamped.x;
+    const promptY = clamped.y;
+
+    // Arrow indicator stays aligned with character center X, clamped safely within banner width
+    const arrowX = Math.max(promptX + 10, Math.min(promptX + promptW - 10, px));
+
+    // Pixel-art styling colors
+    const bgColor = isTeacher ? "#16382B" : "#0F172A";
+    const borderColor = isTeacher ? "#F59E0B" : "#38BDF8";
+    const line1Color = isTeacher
+      ? "#FEF3C7"
+      : lines.length === 1
+      ? "#FFFFFF"
+      : "#38BDF8";
+    const line2Color = isTeacher ? "#FDE68A" : "#FFFFFF";
+
+    return {
+      lines,
+      promptW,
+      promptH,
+      promptX,
+      promptY,
+      arrowX,
+      arrowDirection,
+      bgColor,
+      borderColor,
+      line1Color,
+      line2Color,
+    };
+  }
+
   private static drawDoorsAndSignboards(
     ctx: CanvasRenderingContext2D,
     room: ClassroomDef,
     playerPos: Position,
-    animTick: number
+    animTick: number,
+    cam?: { camX: number; camY: number; zoom: number; canvasWidth: number; canvasHeight: number }
   ) {
     const isCorridor = room.id === "corridor";
 
@@ -481,26 +759,52 @@ export class PixelRenderer {
 
       // Interactive Doorway Contextual Prompt (When player is near)
       if (isPlayerNear) {
-        const promptW = 148;
-        const promptH = 20;
-        const promptX = Math.round(signCenterX - promptW / 2);
-        const promptY = isCorridor && d.triggerArea.y < 5
-          ? (d.triggerArea.y + d.triggerArea.height + 0.2) * TILE_SIZE
-          : (d.triggerArea.y - 0.7) * TILE_SIZE;
+        const layout = PixelRenderer.calculateDoorPromptLayout(
+          d,
+          room,
+          signCenterX,
+          (text, font) => {
+            ctx.font = font;
+            return ctx.measureText(text).width;
+          },
+          cam
+        );
 
-        ctx.fillStyle = "#15241D";
+        const { promptX, promptY, promptW, promptH, lines, accentColor: promptAccent } = layout;
+
+        // Prompt Shadow
+        ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
+        ctx.fillRect(promptX + 2, promptY + 2, promptW, promptH);
+
+        // Prompt Base (Dark Academy Slate)
+        ctx.fillStyle = "#0B1120";
         ctx.fillRect(promptX, promptY, promptW, promptH);
-        ctx.strokeStyle = "#F59E0B";
+
+        // Faculty Accent Left Strip (3px)
+        ctx.fillStyle = promptAccent;
+        ctx.fillRect(promptX, promptY, 3, promptH);
+
+        // Gold Frame with subtle proximity breathing glow
+        ctx.strokeStyle = `rgba(245, 158, 11, ${0.75 + pulse * 0.25})`;
         ctx.lineWidth = 1.5;
         ctx.strokeRect(promptX, promptY, promptW, promptH);
 
-        ctx.fillStyle = "#FFFFFF";
+        // Text Rendering
         ctx.font = "bold 9.5px sans-serif";
         ctx.textAlign = "center";
 
-        const dirKey = isCorridor ? (d.triggerArea.y < 5 ? "[W] or [↑]" : "[S] or [↓]") : "[Step Through]";
-        const actionLabel = isCorridor ? `Enter ${mainTitle}` : "Return to Hallway";
-        ctx.fillText(`${dirKey} ${actionLabel}`, promptX + promptW / 2, promptY + 14);
+        if (lines.length === 1) {
+          ctx.fillStyle = "#FFFFFF";
+          ctx.fillText(lines[0], promptX + promptW / 2 + 1, promptY + 15);
+        } else {
+          // Line 1: Action / Key guidance (soft warm cream)
+          ctx.fillStyle = "#FEF3C7";
+          ctx.fillText(lines[0], promptX + promptW / 2 + 1, promptY + 14);
+
+          // Line 2: Classroom destination (warm gold / yellow)
+          ctx.fillStyle = "#FDE68A";
+          ctx.fillText(lines[1], promptX + promptW / 2 + 1, promptY + 27.5);
+        }
       }
     }
   }
@@ -833,72 +1137,131 @@ export class PixelRenderer {
   // -------------------------------------------------------------
   // FLOATING INTERACTION PROMPTS
   // -------------------------------------------------------------
+  private static renderFloatingBanner(
+    ctx: CanvasRenderingContext2D,
+    layout: CharacterPromptLayout,
+    pulse: number
+  ) {
+    const {
+      promptX,
+      promptY,
+      promptW,
+      promptH,
+      arrowX,
+      arrowDirection,
+      lines,
+      bgColor,
+      borderColor,
+      line1Color,
+      line2Color,
+    } = layout;
+
+    // 1. Drop shadow
+    ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
+    ctx.fillRect(promptX + 2, promptY + 2, promptW, promptH);
+
+    // 2. Base background
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(promptX, promptY, promptW, promptH);
+
+    // 3. Border with subtle proximity pulse glow
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(promptX, promptY, promptW, promptH);
+
+    // 4. Arrow Indicator (pointing down if prompt is above, pointing up if prompt is below)
+    ctx.fillStyle = bgColor;
+    ctx.beginPath();
+    if (arrowDirection === "down") {
+      ctx.moveTo(arrowX - 4, promptY + promptH);
+      ctx.lineTo(arrowX + 4, promptY + promptH);
+      ctx.lineTo(arrowX, promptY + promptH + 5);
+    } else {
+      ctx.moveTo(arrowX - 4, promptY);
+      ctx.lineTo(arrowX + 4, promptY);
+      ctx.lineTo(arrowX, promptY - 5);
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    if (arrowDirection === "down") {
+      ctx.moveTo(arrowX - 4, promptY + promptH);
+      ctx.lineTo(arrowX, promptY + promptH + 5);
+      ctx.lineTo(arrowX + 4, promptY + promptH);
+    } else {
+      ctx.moveTo(arrowX - 4, promptY);
+      ctx.lineTo(arrowX, promptY - 5);
+      ctx.lineTo(arrowX + 4, promptY);
+    }
+    ctx.stroke();
+
+    // 5. Text rendering
+    ctx.font = "bold 9.5px sans-serif";
+    ctx.textAlign = "center";
+
+    if (lines.length === 1) {
+      ctx.fillStyle = line1Color;
+      ctx.fillText(lines[0], promptX + promptW / 2, promptY + 15);
+    } else {
+      // Line 1: Action / Key guidance
+      ctx.fillStyle = line1Color;
+      ctx.fillText(lines[0], promptX + promptW / 2, promptY + 14);
+
+      // Line 2: Character name
+      ctx.fillStyle = line2Color;
+      ctx.fillText(lines[1], promptX + promptW / 2, promptY + 27.5);
+    }
+  }
+
   private static drawTeacherPrompt(
     ctx: CanvasRenderingContext2D,
     teacher: TeacherDef,
-    animTick: number
+    room?: ClassroomDef,
+    animTick: number = 0,
+    cam?: { camX: number; camY: number; zoom: number; canvasWidth: number; canvasHeight: number }
   ) {
-    const px = Math.round((teacher.position.x + 0.5) * TILE_SIZE);
-    const py = Math.round((teacher.position.y + 0.9) * TILE_SIZE);
-    const bounce = Math.sin(animTick * 0.12) * 3;
+    const pulse = (Math.sin(animTick * 0.08) + 1) * 0.5;
+    const layout = PixelRenderer.calculateCharacterPromptLayout(
+      teacher.name,
+      teacher.position,
+      "teacher",
+      room,
+      animTick,
+      (text, font) => {
+        ctx.font = font;
+        return ctx.measureText(text).width;
+      },
+      cam
+    );
 
-    const bannerW = 150;
-    const bannerH = 22;
-    const bx = px - bannerW / 2;
-    const by = py - 62 + bounce;
-
-    ctx.fillStyle = "#234E3C";
-    ctx.fillRect(bx, by, bannerW, bannerH);
-    ctx.strokeStyle = "#F59E0B";
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(bx, by, bannerW, bannerH);
-
-    ctx.fillStyle = "#FFFFFF";
-    ctx.font = "bold 10px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(`[E] Speak with ${teacher.name}`, px, by + 14);
-
-    ctx.fillStyle = "#234E3C";
-    ctx.beginPath();
-    ctx.moveTo(px - 5, by + bannerH);
-    ctx.lineTo(px + 5, by + bannerH);
-    ctx.lineTo(px, by + bannerH + 5);
-    ctx.closePath();
-    ctx.fill();
+    this.renderFloatingBanner(ctx, layout, pulse);
   }
 
   private static drawNPCPrompt(
     ctx: CanvasRenderingContext2D,
     npc: NPCState,
-    animTick: number
+    room?: ClassroomDef,
+    animTick: number = 0,
+    cam?: { camX: number; camY: number; zoom: number; canvasWidth: number; canvasHeight: number }
   ) {
-    const px = Math.round((npc.currentPos.x + 0.5) * TILE_SIZE);
-    const py = Math.round((npc.currentPos.y + 0.9) * TILE_SIZE);
-    const bounce = Math.sin(animTick * 0.12) * 2;
+    const pulse = (Math.sin(animTick * 0.08) + 1) * 0.5;
+    const layout = PixelRenderer.calculateCharacterPromptLayout(
+      npc.def.name,
+      npc.currentPos,
+      "npc",
+      room,
+      animTick,
+      (text, font) => {
+        ctx.font = font;
+        return ctx.measureText(text).width;
+      },
+      cam
+    );
 
-    const bannerW = 120;
-    const bannerH = 20;
-    const bx = px - bannerW / 2;
-    const by = py - 60 + bounce;
-
-    ctx.fillStyle = "#0F172A";
-    ctx.fillRect(bx, by, bannerW, bannerH);
-    ctx.strokeStyle = "#38BDF8";
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(bx, by, bannerW, bannerH);
-
-    ctx.fillStyle = "#FFFFFF";
-    ctx.font = "bold 9.5px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(`[E] Talk with ${npc.def.name}`, px, by + 13.5);
-
-    ctx.fillStyle = "#0F172A";
-    ctx.beginPath();
-    ctx.moveTo(px - 4, by + bannerH);
-    ctx.lineTo(px + 4, by + bannerH);
-    ctx.lineTo(px, by + bannerH + 4);
-    ctx.closePath();
-    ctx.fill();
+    this.renderFloatingBanner(ctx, layout, pulse);
   }
 
   // -------------------------------------------------------------

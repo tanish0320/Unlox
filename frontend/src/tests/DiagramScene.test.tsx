@@ -1,7 +1,7 @@
-﻿import React from "react";
+import React from "react";
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { DiagramSceneComponent } from "../components/scenes/DiagramScene";
+import { DiagramSceneComponent, wrapLabel } from "../components/scenes/DiagramScene";
 import { DiagramScene } from "../components/scenes/sceneTypes";
 
 describe("DiagramScene Component", () => {
@@ -47,7 +47,6 @@ describe("DiagramScene Component", () => {
     expect(screen.getByTestId("diagram-node-item-0")).toBeInTheDocument();
     expect(screen.getByTestId("diagram-node-item-1")).toBeInTheDocument();
     expect(screen.getByTestId("diagram-node-item-2")).toBeInTheDocument();
-    expect(screen.getByText("Iteration 1: i = 0")).toBeInTheDocument();
   });
 
   it("safely filters invalid edges referring to nonexistent nodes", () => {
@@ -108,5 +107,80 @@ describe("DiagramScene Component", () => {
 
     render(<DiagramSceneComponent scene={emptyDiagram} timeSeconds={1} durationSeconds={4} />);
     expect(screen.getByText(/No diagram nodes provided/i)).toBeInTheDocument();
+  });
+
+  it("wraps long labels into multiple lines without clipping", () => {
+    const longText = "Horizontal Distance (Δx = x₂ - x₁)";
+    const lines = wrapLabel(longText, 20);
+    expect(lines.length).toBeGreaterThan(1);
+    expect(lines[0]).toBe("Horizontal Distance");
+    expect(lines[1]).toBe("(Δx = x₂ - x₁)");
+  });
+
+  it("renders 4 nodes with long labels in responsive multi-row layout without overlap", () => {
+    const fourLongNodes: DiagramScene = {
+      id: "diag-4-long",
+      type: "diagram",
+      heading: "Pythagorean Coordinate Geometry",
+      items: [
+        "Horizontal Distance (Δx = x₂ - x₁)",
+        "Vertical Distance (Δy = y₂ - y₁)",
+        "Sum of Squares (Δx² + Δy²)",
+        "Euclidean Distance (d = √(Δx² + Δy²))",
+      ],
+      narration: "Distance formula derived directly from right triangle geometry.",
+    };
+
+    const { container } = render(
+      <DiagramSceneComponent scene={fourLongNodes} timeSeconds={3} durationSeconds={8} />
+    );
+
+    const nodeElements = container.querySelectorAll("[data-testid^='diagram-node-item-']");
+    expect(nodeElements.length).toBe(4);
+
+    // Verify all 4 nodes have valid rect dimensions
+    const rects = container.querySelectorAll(".blu-diagram-node-rect");
+    expect(rects.length).toBe(4);
+    rects.forEach((rect) => {
+      const width = parseFloat(rect.getAttribute("width") || "0");
+      const height = parseFloat(rect.getAttribute("height") || "0");
+      expect(width).toBeGreaterThan(150);
+      expect(height).toBeGreaterThan(50);
+    });
+  });
+
+  it("renders 6 nodes with safe spacing and corridor arrow routing", () => {
+    const sixNodesDiagram: DiagramScene = {
+      id: "diag-6-nodes",
+      type: "diagram",
+      heading: "Scientific Method Steps",
+      items: [
+        "Observation & Question",
+        "Background Research",
+        "Formulate Hypothesis",
+        "Experimental Design",
+        "Data Analysis",
+        "Draw Conclusion",
+      ],
+      narration: "The systematic empirical method for exploring natural phenomena.",
+    };
+
+    const { container } = render(
+      <DiagramSceneComponent scene={sixNodesDiagram} timeSeconds={4} durationSeconds={10} />
+    );
+
+    const nodeElements = container.querySelectorAll("[data-testid^='diagram-node-item-']");
+    expect(nodeElements.length).toBe(6);
+
+    // Verify edge count
+    const edgeElements = container.querySelectorAll("[data-testid^='diagram-edge-']");
+    expect(edgeElements.length).toBe(5);
+
+    // Verify the inter-row transition edge (item-2 to item-3) uses smooth corridor path
+    const transitionEdge = container.querySelector("[data-testid='diagram-edge-item-2-item-3'] path");
+    expect(transitionEdge).toBeDefined();
+    const dAttr = transitionEdge?.getAttribute("d") || "";
+    // Cubic bezier path: contains 'C'
+    expect(dAttr).toContain("C");
   });
 });

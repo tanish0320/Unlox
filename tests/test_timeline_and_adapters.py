@@ -153,7 +153,7 @@ def test_fallback_metadata_propagation(tmp_path: Path):
 
 
 def test_unicode_preservation_in_captions():
-    """Verify that native Devanagari, Tamil, and Telugu scripts are preserved without ASCII corruption."""
+    """Verify that native Devanagari, Tamil, Telugu, and Kannada scripts are preserved without ASCII corruption."""
     translator = DictionaryFallbackTranslationAdapter()
     planner = MockLessonPlanner(fallback_fixture_path=FIXTURE_PATH)
     lesson = planner.get_fallback_lesson()
@@ -173,12 +173,50 @@ def test_unicode_preservation_in_captions():
     assert "పైథాన్" in te_plan.title
     assert "పునరావృతం" in te_plan.scenes[0].narration
 
+    # Kannada
+    kn_plan, _, _ = translator.translate_lesson(lesson, "en", "kn")
+    assert "ಪೈಥಾನ್" in kn_plan.title
+    assert "ಪಟ್ಟಿಯಲ್ಲಿರುವ" in kn_plan.scenes[0].narration
+
     # Ensure code blocks in all languages remained strictly identical Python code
-    for plan in [hi_plan, ta_plan, te_plan]:
+    for plan in [hi_plan, ta_plan, te_plan, kn_plan]:
         code_scene = plan.scenes[1]
         assert isinstance(code_scene, CodeWalkthroughScene)
         assert code_scene.code == lesson.scenes[1].code
         assert code_scene.highlight_lines == lesson.scenes[1].highlight_lines
+
+
+def test_real_piper_tts_offline_synthesis_tamil_and_kannada(tmp_path: Path):
+    """Verify real local Piper ONNX synthesis for Tamil and Kannada without mock fallback."""
+    dispatcher = LocalTTSDispatcher(output_dir=tmp_path, allow_mock=False)
+    supported = dispatcher.get_supported_voices()
+
+    assert supported.get("ta", {}).get("available") is True
+    assert supported.get("kn", {}).get("available") is True
+
+    # Test Tamil synthesis
+    ta_wav = tmp_path / "test_ta.wav"
+    ta_entry = dispatcher.synthesize_speech(
+        text="வணக்கம்! இது தமிழ் குரல் மாதிரி.",
+        language="ta",
+        output_path=ta_wav,
+    )
+    assert not ta_entry.fallback_used
+    assert ta_wav.is_file()
+    assert ta_entry.duration_seconds > 0.5
+    assert "piper_ta_IN" in ta_entry.voice_id
+
+    # Test Kannada synthesis
+    kn_wav = tmp_path / "test_kn.wav"
+    kn_entry = dispatcher.synthesize_speech(
+        text="ನಮಸ್ಕಾರ! ಇದು ಕನ್ನಡ ಧ್ವನಿ ಮಾದರಿ.",
+        language="kn",
+        output_path=kn_wav,
+    )
+    assert not kn_entry.fallback_used
+    assert kn_wav.is_file()
+    assert kn_entry.duration_seconds > 0.5
+    assert "piper_kn_IN" in kn_entry.voice_id
 
 
 def test_real_windows_tts_offline_synthesis(tmp_path: Path):

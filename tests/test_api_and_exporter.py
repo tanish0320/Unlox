@@ -257,9 +257,11 @@ def test_api_tts_voices_endpoint():
     # English uses native Windows SAPI5
     assert voices["en"]["available"] is True
     assert "windows" in voices["en"]["engine"].lower() or "sapi5" in voices["en"]["engine"].lower()
-    # Tamil and Kannada are missing with clear instructions
-    assert voices["ta"]["available"] is False
-    assert "error" in voices["ta"]
+    # Tamil and Kannada are locally installed via Piper ONNX
+    assert voices["ta"]["available"] is True
+    assert "piper" in voices["ta"]["engine"].lower()
+    assert voices["kn"]["available"] is True
+    assert "piper" in voices["kn"]["engine"].lower()
 
 
 def test_real_hindi_speech_synthesis():
@@ -296,8 +298,30 @@ def test_missing_voice_error_for_unsupported_language():
 
     dispatcher = LocalTTSDispatcher()
     with pytest.raises(MissingLocalVoiceError) as exc_info:
-        dispatcher.synthesize(text="வணக்கம்", language="ta")
+        dispatcher.synthesize(text="നമസ്കാരം", language="ml")
 
     err = str(exc_info.value)
-    assert "Tamil" in err or "ta" in err
+    assert "Malayalam" in err or "ml" in err
     assert "piper" in err.lower() or "install" in err.lower()
+
+
+def test_real_tamil_and_kannada_speech_synthesis():
+    """Verify genuine offline neural speech synthesis for Tamil and Kannada text."""
+    from backend.app.services.tts.tts_adapter import LocalTTSDispatcher
+    import wave
+
+    dispatcher = LocalTTSDispatcher()
+
+    # Tamil synthesis
+    ta_res = dispatcher.synthesize(text="வணக்கம்! இது தமிழ் மாதிரி.", language="ta")
+    ta_wav = Path(ta_res.audio_file)
+    assert ta_wav.is_file()
+    assert not ta_res.fallback_used
+    assert "piper_ta_IN" in ta_res.voice_id
+
+    # Kannada synthesis
+    kn_res = dispatcher.synthesize(text="ನಮಸ್ಕಾರ! ಇದು ಕನ್ನಡ ಮಾದರಿ.", language="kn")
+    kn_wav = Path(kn_res.audio_file)
+    assert kn_wav.is_file()
+    assert not kn_res.fallback_used
+    assert "piper_kn_IN" in kn_res.voice_id

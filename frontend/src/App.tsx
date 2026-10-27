@@ -24,6 +24,7 @@ import "./styles/fonts.css";
 
 import "./styles/sceneTokens.css";
 import { BluAcademyView, GameLaunchPayload } from "./game";
+import { ChalkboardLanding } from "./components/ChalkboardLanding";
 
 
 
@@ -91,9 +92,9 @@ const LANGUAGES = [
 
   { code: "te", label: "తెలుగు", voiceEngine: "Piper Neural", voiceStatus: "ready" },
 
-  { code: "ta", label: "தமிழ்", voiceEngine: "Piper Neural", voiceStatus: "missing" },
+  { code: "ta", label: "தமிழ்", voiceEngine: "Piper Neural", voiceStatus: "ready" },
 
-  { code: "kn", label: "ಕನ್ನಡ", voiceEngine: "Piper Neural", voiceStatus: "missing" },
+  { code: "kn", label: "ಕನ್ನಡ", voiceEngine: "Piper Neural", voiceStatus: "ready" },
 
 ];
 
@@ -131,13 +132,13 @@ const VOICE_OPTIONS: Record<string, Array<{ id: string; name: string; engine: st
 
   ta: [
 
-    { id: "ta_IN", name: "Tamil Voice (Setup required)", engine: "Piper ONNX" },
+    { id: "ta_IN-rasa_female-medium", name: "Rasa (Piper Neural Tamil Female)", engine: "Piper ONNX" },
 
   ],
 
   kn: [
 
-    { id: "kn_IN", name: "Kannada Voice (Setup required)", engine: "Piper ONNX" },
+    { id: "kn_IN-syspin_male-medium", name: "SYSPIN (Piper Neural Kannada Male)", engine: "Piper ONNX" },
 
   ],
 
@@ -179,14 +180,55 @@ export const App: React.FC = () => {
 
   const [level, setLevel] = useState<LessonLevel>("beginner");
 
-  const [language, setLanguage] = useState("hi");
+  const [language, setLanguage] = useState("en");
 
-  const [selectedVoice, setSelectedVoice] = useState<string>("hi_IN-pratham-medium");
+  const [selectedVoice, setSelectedVoice] = useState<string>("af_heart");
 
   const [duration, setDuration] = useState(60);
 
+  // Chalkboard Intro Landing Overlay State
+  const [showIntro, setShowIntro] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    const params = new URLSearchParams(window.location.search);
+    if (
+      params.get("langtest") === "1" ||
+      params.get("render") === "1" ||
+      window.location.pathname === "/render"
+    ) {
+      return false;
+    }
+    try {
+      return sessionStorage.getItem("bvt_intro_seen") !== "1";
+    } catch {
+      return true;
+    }
+  });
+
+  const handleSkipIntro = () => {
+    setShowIntro(false);
+    setActiveView("academy");
+    try {
+      sessionStorage.setItem("bvt_intro_seen", "1");
+    } catch {
+      // Safe fallback
+    }
+  };
+
   // App Navigation & Gamification Integration State
-  const [activeView, setActiveView] = useState<"academy" | "studio">("studio");
+  const [activeView, setActiveView] = useState<"academy" | "studio">(() => {
+    if (typeof window === "undefined") return "studio";
+    if ((import.meta as any).env?.MODE === "test") return "studio";
+    const params = new URLSearchParams(window.location.search);
+    if (
+      params.get("render") === "1" ||
+      params.get("langtest") === "1" ||
+      window.location.pathname === "/render" ||
+      params.get("view") === "studio"
+    ) {
+      return "studio";
+    }
+    return "academy";
+  });
   const [lastLaunchedSubject, setLastLaunchedSubject] = useState<"maths" | "cs" | "physics" | "chemistry" | "biology" | "social">("cs");
   const [completedLessonInfo, setCompletedLessonInfo] = useState<{
     subject: "maths" | "cs" | "physics" | "chemistry" | "biology" | "social";
@@ -215,11 +257,11 @@ export const App: React.FC = () => {
 
     } else if (newLang === "ta") {
 
-      setSelectedVoice("ta_IN");
+      setSelectedVoice("ta_IN-rasa_female-medium");
 
     } else if (newLang === "kn") {
 
-      setSelectedVoice("kn_IN");
+      setSelectedVoice("kn_IN-syspin_male-medium");
 
     }
 
@@ -819,6 +861,7 @@ export const App: React.FC = () => {
   }, [isFullscreen, isPlaying]);
 
   useEffect(() => {
+    if (showIntro) return;
     const handleGlobalKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (["INPUT", "TEXTAREA", "SELECT"].includes(tag)) {
@@ -847,7 +890,7 @@ export const App: React.FC = () => {
     };
     window.addEventListener("keydown", handleGlobalKey);
     return () => window.removeEventListener("keydown", handleGlobalKey);
-  }, [isPlaying, isFullscreen, isMuted, sceneTime, currentSceneDuration]);
+  }, [isPlaying, isFullscreen, isMuted, sceneTime, currentSceneDuration, showIntro]);
 
 
 
@@ -871,7 +914,13 @@ export const App: React.FC = () => {
 
     <div className="bvt-app-container">
 
-      
+      {/* Multilingual Chalkboard Landing Overlay */}
+      {showIntro && (
+        <ChalkboardLanding
+          onSkip={handleSkipIntro}
+        />
+      )}
+
       {/* Full-viewport Blu Academy Game Experience */}
       {activeView === "academy" && (
         <div
@@ -971,6 +1020,16 @@ export const App: React.FC = () => {
           </button>
 
 
+
+          {/* Intro Replay Button */}
+          <button
+            type="button"
+            className="bvt-pill-btn"
+            onClick={() => setShowIntro(true)}
+            title="Show Chalkboard Intro"
+          >
+            ✨ Intro
+          </button>
 
           {/* Mock Demo vs Live Toggle */}
 
@@ -1735,11 +1794,14 @@ export const App: React.FC = () => {
                       value={duration}
                       onChange={(e) => setDuration(Number(e.target.value))}
                     >
-                      <option value={60}>1 minute (Foundational Concept)</option>
-                      <option value={120}>2 minutes (Worked Examples)</option>
-                      <option value={180}>3 minutes (Deep Exploration)</option>
-                      <option value={240}>4 minutes (Comprehensive Mastery)</option>
-                      <option value={300}>5 minutes (Full Curriculum Deep Dive)</option>
+                      <option value={30}>30 seconds</option>
+                      <option value={45}>45 seconds</option>
+                      <option value={60}>60 seconds (1 minute)</option>
+                      <option value={90}>90 seconds</option>
+                      <option value={120}>2 minutes (120 seconds)</option>
+                      <option value={180}>3 minutes (180 seconds)</option>
+                      <option value={240}>4 minutes (240 seconds)</option>
+
                     </select>
 
                   </div>
