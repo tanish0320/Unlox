@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 class BaseScene(BaseModel):
     id: str = Field(..., description="Unique scene identifier, e.g. 'scene_1'")
     heading: str = Field(..., min_length=2, max_length=120, description="On-screen title/heading")
-    narration: str = Field(..., min_length=5, max_length=500, description="Spoken narration script")
+    narration: str = Field(..., min_length=5, max_length=2000, description="Spoken narration script")
 
     @field_validator("narration", "heading")
     @classmethod

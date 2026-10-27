@@ -23,6 +23,7 @@ import "./styles/appDesign.css";
 import "./styles/fonts.css";
 
 import "./styles/sceneTokens.css";
+import { BluAcademyView, GameLaunchPayload } from "./game";
 
 
 
@@ -183,6 +184,16 @@ export const App: React.FC = () => {
   const [selectedVoice, setSelectedVoice] = useState<string>("hi_IN-pratham-medium");
 
   const [duration, setDuration] = useState(60);
+
+  // App Navigation & Gamification Integration State
+  const [activeView, setActiveView] = useState<"academy" | "studio">("studio");
+  const [lastLaunchedSubject, setLastLaunchedSubject] = useState<"maths" | "cs" | "physics" | "chemistry" | "biology" | "social">("cs");
+  const [completedLessonInfo, setCompletedLessonInfo] = useState<{
+    subject: "maths" | "cs" | "physics" | "chemistry" | "biology" | "social";
+    lessonId: string;
+    topic: string;
+    revisionQuestions?: { question: string; answer: string }[];
+  } | null>(null);
 
 
 
@@ -443,10 +454,18 @@ export const App: React.FC = () => {
 
 
   // Trigger Generation Pipeline
+  const handleGenerate = async (overrideParams?: {
+    topic: string;
+    level: LessonLevel;
+    language: string;
+    duration: number;
+  }) => {
+    const targetTopic = overrideParams?.topic ?? topic;
+    const targetLevel = overrideParams?.level ?? level;
+    const targetLanguage = overrideParams?.language ?? language;
+    const targetDuration = overrideParams?.duration ?? duration;
 
-  const handleGenerate = async () => {
-
-    if (!topic.trim()) return;
+    if (!targetTopic.trim()) return;
 
 
 
@@ -485,17 +504,11 @@ export const App: React.FC = () => {
         headers: { "Content-Type": "application/json" },
 
         body: JSON.stringify({
-
-          topic: topic.trim(),
-
-          level,
-
-          language,
-
-          target_duration_seconds: duration,
-
+          topic: targetTopic.trim(),
+          level: targetLevel,
+          language: targetLanguage,
+          target_duration_seconds: targetDuration,
           voice_id: selectedVoice,
-
         }),
 
       });
@@ -638,6 +651,31 @@ export const App: React.FC = () => {
 
   };
 
+  // Launch lesson from teacher dialogue inside Blu Academy RPG
+  const handleLaunchFromGame = (payload: GameLaunchPayload) => {
+    const targetLanguage = payload.language || language;
+    const targetDuration = payload.duration || duration;
+
+    setTopic(payload.topic);
+    setLevel(payload.level);
+    setLanguage(targetLanguage);
+    setDuration(targetDuration);
+    setLastLaunchedSubject(payload.subject);
+
+    if (payload.subject === "maths") setActiveCategory("Maths");
+    else if (payload.subject === "cs") setActiveCategory("Coding");
+    else if (payload.subject === "social") setActiveCategory("Social Studies");
+    else setActiveCategory("Science");
+
+    setActiveView("studio");
+    handleGenerate({
+      topic: payload.topic,
+      level: payload.level,
+      language: targetLanguage,
+      duration: targetDuration,
+    });
+  };
+
 
 
   // Active scene and duration calculation
@@ -675,6 +713,12 @@ export const App: React.FC = () => {
     } else {
 
       setIsPlaying(false);
+      setCompletedLessonInfo({
+        subject: lastLaunchedSubject,
+        lessonId: lessonPlan?.title || topic,
+        topic: topic,
+        revisionQuestions: studyNotes?.revision_questions || lessonPlan?.revision_questions,
+      });
 
     }
 
@@ -817,7 +861,34 @@ export const App: React.FC = () => {
 
     <div className="bvt-app-container">
 
-      {/* Top Navigation Bar */}
+      
+      {/* Full-viewport Blu Academy Game Experience */}
+      {activeView === "academy" && (
+        <div
+          data-testid="blu-academy-fullscreen-root"
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: "100vw",
+            height: "100vh",
+            minHeight: "100dvh",
+            zIndex: 1000,
+            overflow: "hidden",
+            backgroundColor: "#080C16",
+          }}
+        >
+          <BluAcademyView
+            onLaunchLesson={handleLaunchFromGame}
+            onExitGame={() => setActiveView("studio")}
+            completedLessonInfo={completedLessonInfo}
+            onClearCompletedLesson={() => setCompletedLessonInfo(null)}
+          />
+        </div>
+      )}
+{/* Top Navigation Bar */}
 
       <header className="bvt-header">
 
@@ -973,6 +1044,17 @@ export const App: React.FC = () => {
 
 
 
+          
+          {/* Blu Academy RPG Toggle Button */}
+          <button
+            type="button"
+            className={`bvt-pill-btn ${activeView === "academy" ? "active" : ""}`}
+            onClick={() => setActiveView(activeView === "academy" ? "studio" : "academy")}
+            title="Explore 2D Pixel RPG School with Teachers & Badges"
+          >
+            🎮 {activeView === "academy" ? "Exit to Studio" : "Blu Academy (RPG)"}
+          </button>
+
           {/* Text Sizing Scaler */}
 
           <button
@@ -1005,7 +1087,26 @@ export const App: React.FC = () => {
 
           <div className="bvt-nav-group">
 
+            
             <button
+              type="button"
+              className={`bvt-nav-item ${activeView === "academy" ? "active" : ""}`}
+              onClick={() => setActiveView("academy")}
+              style={{
+                width: "100%",
+                background: activeView === "academy" ? "var(--bvt-green-light)" : "none",
+                cursor: "pointer",
+                textAlign: "left",
+                border: "none",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+              }}
+            >
+              <span style={{ fontSize: 18 }}>🎒</span>
+              <span>Blu Academy (RPG)</span>
+            </button>
+<button
 
               type="button"
 
@@ -1645,7 +1746,7 @@ export const App: React.FC = () => {
 
                     disabled={isGenerating || !topic.trim()}
 
-                    onClick={handleGenerate}
+                    onClick={() => handleGenerate()}
 
                   >
 
@@ -2326,6 +2427,57 @@ export const App: React.FC = () => {
                         </a>
 
                       </div>
+
+                  {/* Return to Blu Academy Reward Banner */}
+                  <div
+                    style={{
+                      marginTop: 16,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      background: "linear-gradient(135deg, #DEF0E5 0%, #E8F5E9 100%)",
+                      border: "1px solid #A5D6A7",
+                      borderRadius: 12,
+                      padding: "12px 18px",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <span style={{ fontSize: 24 }}>🎓</span>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "#234E3C" }}>
+                          Blu Academy Progress
+                        </div>
+                        <div style={{ fontSize: 12, color: "#2F6B53" }}>
+                          Return to school to earn +100 XP, unlock subject badges & test your knowledge!
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="bvt-pill-btn active"
+                      style={{
+                        backgroundColor: "#234E3C",
+                        color: "#FFFFFF",
+                        border: "none",
+                        padding: "8px 16px",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                      onClick={() => {
+                        setCompletedLessonInfo({
+                          subject: lastLaunchedSubject,
+                          lessonId: lessonPlan?.title || topic,
+                          topic: topic,
+                          revisionQuestions: studyNotes?.revision_questions || lessonPlan?.revision_questions,
+                        });
+                        setActiveView("academy");
+                      }}
+                    >
+                      Return to Academy (+XP) ➜
+                    </button>
+                  </div>
+
 
                     </div>
 

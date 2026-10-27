@@ -60,11 +60,22 @@ class OllamaLessonPlanner:
                     break
             self.fallback_fixture_path = found_path or (Path("fixtures") / "sample-lesson.json")
 
-    def get_fallback_lesson(self, topic: Optional[str] = None) -> LessonPlan:
-        """Loads and returns an instruction-mode aware deterministic fallback lesson."""
+    def get_fallback_lesson(
+        self,
+        topic: Optional[str] = None,
+        target_duration_seconds: int = 60,
+        level: str = "beginner",
+        language: str = "en",
+    ) -> LessonPlan:
+        """Loads and returns an instruction-mode aware deterministic fallback lesson with proper duration scaling."""
         from backend.app.services.planner.mock_planner import MockLessonPlanner
         planner = MockLessonPlanner()
-        plan, _ = planner.plan_lesson(topic=topic or "How Python Loops Work", level="beginner", language="en")
+        plan, _ = planner.plan_lesson(
+            topic=topic or "How Python Loops Work",
+            level=level if level in ["beginner", "intermediate"] else "beginner",
+            language=language,
+            target_duration_seconds=target_duration_seconds,
+        )
         return plan
 
     def is_available(self) -> bool:
@@ -154,7 +165,12 @@ class OllamaLessonPlanner:
             err_msg = call_err or "Ollama unreachable or timed out"
 
         # Deterministic offline fallback
-        fallback_plan = self.get_fallback_lesson(topic=topic)
+        fallback_plan = self.get_fallback_lesson(
+            topic=topic,
+            target_duration_seconds=target_duration_seconds,
+            level=level,
+            language=language,
+        )
         fallback_plan.level = level if level in ["beginner", "intermediate"] else "beginner"
         fallback_plan.target_duration_seconds = target_duration_seconds
         fallback_plan.language = language
