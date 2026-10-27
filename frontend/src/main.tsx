@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import ReactDOM from "react-dom/client";
 import { SceneRenderer } from "./components/scenes/SceneRenderer";
 import { CaptionTrack, getActiveCaption } from "./components/CaptionTrack";
@@ -6,6 +6,14 @@ import { NotesPreview } from "./components/NotesPreview";
 import { sampleLesson } from "./fixtures/sampleLesson";
 import { sampleCaptions } from "./fixtures/sampleCaptions";
 import { sampleNotes } from "./fixtures/sampleNotes";
+import { RenderPage } from "./render/RenderPage";
+
+// Lightweight pathname routing to support /render without third-party router dependency
+const isRenderRoute =
+  typeof window !== "undefined" &&
+  (window.location.pathname === "/render" ||
+    window.location.pathname.startsWith("/render/") ||
+    new URLSearchParams(window.location.search).get("mode") === "render");
 
 const App: React.FC = () => {
   const [currentSceneIdx, setCurrentSceneIdx] = useState(0);
@@ -49,6 +57,14 @@ const App: React.FC = () => {
         >
           Next Scene
         </button>
+        <button
+          onClick={() => {
+            window.location.href = "/render?lesson=default&scene=0&t=2.5";
+          }}
+          style={{ padding: "8px 16px", cursor: "pointer", background: "#38BDF8", color: "#0B1020", fontWeight: "bold" }}
+        >
+          Open /render Route
+        </button>
         <label style={{ color: "#F8FAFC", display: "flex", alignItems: "center", gap: 8 }}>
           <input
             type="checkbox"
@@ -78,6 +94,6 @@ const App: React.FC = () => {
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App />
+    {isRenderRoute ? <RenderPage /> : <App />}
   </React.StrictMode>
 );
