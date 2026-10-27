@@ -11,6 +11,7 @@ import {
 import "./styles/appDesign.css";
 import "./styles/fonts.css";
 import "./styles/sceneTokens.css";
+import { BluAcademyView, GameLaunchPayload } from "./game";
 
 // Quick idea presets by category matching the PRD and UI screenshots
 const QUICK_IDEAS = {
@@ -56,6 +57,16 @@ export const App: React.FC = () => {
   const [language, setLanguage] = useState("en");
   const [duration, setDuration] = useState(45);
   const [useMockData, setUseMockData] = useState(false);
+
+  // App Navigation & Gamification Integration State
+  const [activeView, setActiveView] = useState<"academy" | "studio">("academy");
+  const [lastLaunchedSubject, setLastLaunchedSubject] = useState<"maths" | "cs" | "physics" | "chemistry" | "biology" | "social">("cs");
+  const [completedLessonInfo, setCompletedLessonInfo] = useState<{
+    subject: "maths" | "cs" | "physics" | "chemistry" | "biology" | "social";
+    lessonId: string;
+    topic: string;
+    revisionQuestions?: { question: string; answer: string }[];
+  } | null>(null);
 
   // Generation / Job State
   const [isGenerating, setIsGenerating] = useState(false);
@@ -114,8 +125,18 @@ export const App: React.FC = () => {
   };
 
   // Trigger Generation Pipeline
-  const handleGenerate = async () => {
-    if (!topic.trim()) return;
+  const handleGenerate = async (overrideParams?: {
+    topic: string;
+    level: LessonLevel;
+    language: string;
+    duration: number;
+  }) => {
+    const targetTopic = overrideParams?.topic ?? topic;
+    const targetLevel = overrideParams?.level ?? level;
+    const targetLanguage = overrideParams?.language ?? language;
+    const targetDuration = overrideParams?.duration ?? duration;
+
+    if (!targetTopic.trim()) return;
 
     setIsGenerating(true);
     setErrorMessage(null);
@@ -134,10 +155,10 @@ export const App: React.FC = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          topic: topic.trim(),
-          level,
-          language,
-          target_duration_seconds: duration,
+          topic: targetTopic.trim(),
+          level: targetLevel,
+          language: targetLanguage,
+          target_duration_seconds: targetDuration,
         }),
       });
 
@@ -196,6 +217,31 @@ export const App: React.FC = () => {
     }
   };
 
+  // Launch lesson from teacher dialogue inside Blu Academy RPG
+  const handleLaunchFromGame = (payload: GameLaunchPayload) => {
+    const targetLanguage = payload.language || language;
+    const targetDuration = payload.duration || duration;
+
+    setTopic(payload.topic);
+    setLevel(payload.level);
+    setLanguage(targetLanguage);
+    setDuration(targetDuration);
+    setLastLaunchedSubject(payload.subject);
+
+    if (payload.subject === "maths") setActiveCategory("Maths");
+    else if (payload.subject === "cs") setActiveCategory("Coding");
+    else if (payload.subject === "social") setActiveCategory("Social Studies");
+    else setActiveCategory("Science");
+
+    setActiveView("studio");
+    handleGenerate({
+      topic: payload.topic,
+      level: payload.level,
+      language: targetLanguage,
+      duration: targetDuration,
+    });
+  };
+
   // Active scene and duration calculation
   const currentScene = lessonPlan?.scenes?.[currentSceneIdx];
   const currentAudioEntry = audioManifest?.entries?.[currentSceneIdx];
@@ -214,6 +260,13 @@ export const App: React.FC = () => {
       setSceneTime(0);
     } else {
       setIsPlaying(false);
+      // Automatically stage completed lesson so returning to Academy claims XP & opens quiz!
+      setCompletedLessonInfo({
+        subject: lastLaunchedSubject,
+        lessonId: lessonPlan?.title || topic,
+        topic: topic,
+        revisionQuestions: studyNotes?.revision_questions || lessonPlan?.revision_questions,
+      });
     }
   };
 
@@ -260,6 +313,22 @@ export const App: React.FC = () => {
         </div>
 
         <div className="bvt-header-actions">
+          <button
+            className={`bvt-pill-btn ${activeView === "academy" ? "active" : ""}`}
+            onClick={() => setActiveView("academy")}
+            title="Explore Blu Academy 2D RPG School"
+          >
+            🎒 Blu Academy
+          </button>
+
+          <button
+            className={`bvt-pill-btn ${activeView === "studio" ? "active" : ""}`}
+            onClick={() => setActiveView("studio")}
+            title="Create & View Lessons in Studio"
+          >
+            ✏️ Lesson Studio
+          </button>
+
           <button className="bvt-pill-btn active">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="1" y1="1" x2="23" y2="23" />
@@ -300,21 +369,48 @@ export const App: React.FC = () => {
         {/* Left Sidebar */}
         <aside className="bvt-sidebar">
           <div className="bvt-nav-group">
-            <a href="#home" className="bvt-nav-item">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                <polyline points="9 22 9 12 15 12 15 22" />
-              </svg>
-              Home
-            </a>
+            <button
+              type="button"
+              className={`bvt-nav-item ${activeView === "academy" ? "active" : ""}`}
+              onClick={() => setActiveView("academy")}
+              style={{
+                background: activeView === "academy" ? "var(--bvt-green-light)" : "transparent",
+                border: "none",
+                width: "100%",
+                textAlign: "left",
+                cursor: "pointer",
+                font: "inherit",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+              }}
+            >
+              <span style={{ fontSize: 18 }}>🎒</span>
+              <span>Blu Academy</span>
+            </button>
 
-            <a href="#create" className="bvt-nav-item active">
+            <button
+              type="button"
+              className={`bvt-nav-item ${activeView === "studio" ? "active" : ""}`}
+              onClick={() => setActiveView("studio")}
+              style={{
+                background: activeView === "studio" ? "var(--bvt-green-light)" : "transparent",
+                border: "none",
+                width: "100%",
+                textAlign: "left",
+                cursor: "pointer",
+                font: "inherit",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+              }}
+            >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
               </svg>
-              Create a Lesson
-            </a>
+              <span>Create a Lesson</span>
+            </button>
           </div>
 
           <div className="bvt-sidebar-footer">
@@ -328,12 +424,24 @@ export const App: React.FC = () => {
         </aside>
 
         {/* Content Area */}
-        <main className="bvt-main-content">
-          {/* Form & Steps Column */}
-          <section>
-            <div className="bvt-hero-header">
-              <div className="bvt-eyebrow">A little curiosity goes a long way</div>
-              <h2 className="bvt-main-heading">Turn any topic into an offline lesson</h2>
+        <main
+          className="bvt-main-content"
+          style={activeView === "academy" ? { display: "block", padding: "24px 32px" } : undefined}
+        >
+          {activeView === "academy" ? (
+            <BluAcademyView
+              onLaunchLesson={handleLaunchFromGame}
+              onExitGame={() => setActiveView("studio")}
+              completedLessonInfo={completedLessonInfo}
+              onClearCompletedLesson={() => setCompletedLessonInfo(null)}
+            />
+          ) : (
+            <>
+              {/* Form & Steps Column */}
+              <section>
+                <div className="bvt-hero-header">
+                  <div className="bvt-eyebrow">A little curiosity goes a long way</div>
+                  <h2 className="bvt-main-heading">Turn any topic into an offline lesson</h2>
               <p className="bvt-subheading">
                 Create video lessons with visuals, voice and captions, ready to use even without internet.
               </p>
@@ -459,7 +567,7 @@ export const App: React.FC = () => {
                 type="button"
                 className="bvt-generate-btn"
                 disabled={isGenerating || !topic.trim()}
-                onClick={handleGenerate}
+                onClick={() => handleGenerate()}
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
@@ -738,6 +846,56 @@ export const App: React.FC = () => {
                       Subtitles (SRT)
                     </a>
                   </div>
+
+                  {/* Return to Blu Academy Reward Banner */}
+                  <div
+                    style={{
+                      marginTop: 16,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      background: "linear-gradient(135deg, #DEF0E5 0%, #E8F5E9 100%)",
+                      border: "1px solid #A5D6A7",
+                      borderRadius: 12,
+                      padding: "12px 18px",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <span style={{ fontSize: 24 }}>🎓</span>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "#234E3C" }}>
+                          Blu Academy Progress
+                        </div>
+                        <div style={{ fontSize: 12, color: "#2F6B53" }}>
+                          Return to school to earn +100 XP, unlock subject badges & test your knowledge!
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="bvt-pill-btn active"
+                      style={{
+                        backgroundColor: "#234E3C",
+                        color: "#FFFFFF",
+                        border: "none",
+                        padding: "8px 16px",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                      onClick={() => {
+                        setCompletedLessonInfo({
+                          subject: lastLaunchedSubject,
+                          lessonId: lessonPlan?.title || topic,
+                          topic: topic,
+                          revisionQuestions: studyNotes?.revision_questions || lessonPlan?.revision_questions,
+                        });
+                        setActiveView("academy");
+                      }}
+                    >
+                      Return to Academy (+XP) ➜
+                    </button>
+                  </div>
                 </div>
               ) : (
                 /* Study Notes View */
@@ -787,6 +945,8 @@ export const App: React.FC = () => {
               </div>
             )}
           </section>
+            </>
+          )}
         </main>
       </div>
     </div>
