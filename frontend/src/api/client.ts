@@ -1,5 +1,5 @@
 import { normalizeJobStatus, normalizeLessonResponse } from '../adapters/normalize'
-import { mockLesson } from './mockData'
+import { getMockLesson } from './mockData'
 import type {
   GenerateJobResponse,
   GenerateRequest,
@@ -38,6 +38,7 @@ interface MockJob {
   startedAt: number
   fallbackUsed: boolean
   shouldFail: boolean
+  language: string
 }
 
 const mockJobs = new Map<string, MockJob>()
@@ -124,6 +125,7 @@ export async function generateLesson(
       startedAt: Date.now(),
       fallbackUsed: params.get('fallback') === '1',
       shouldFail: params.get('fail') === '1',
+      language: request.language,
     })
     return { job_id: jobId }
   }
@@ -157,7 +159,7 @@ export async function getLesson(jobId: string): Promise<LessonResponse> {
     if (status.status !== 'ready') {
       throw new Error('The demo lesson is not ready yet')
     }
-    return mockLesson
+    return getMockLesson(getMockJob(jobId).language)
   }
   return normalizeLessonResponse(
     await requestJson(`/jobs/${encodeURIComponent(jobId)}/lesson`),

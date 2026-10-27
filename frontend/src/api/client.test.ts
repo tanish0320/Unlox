@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { generateLesson, getStatus } from './client'
+import { generateLesson, getLesson, getStatus } from './client'
 
 describe('mock lesson client', () => {
   beforeEach(() => {
@@ -21,5 +21,20 @@ describe('mock lesson client', () => {
 
     vi.advanceTimersByTime(12_000)
     expect((await getStatus(job.job_id)).status).toBe('ready')
+  })
+
+  it('returns the requested language in the mock lesson', async () => {
+    const job = await generateLesson({
+      topic: 'Python loops',
+      level: 'beginner',
+      language: 'ta',
+      target_duration_seconds: 45,
+    })
+
+    vi.advanceTimersByTime(12_000)
+    const lesson = await getLesson(job.job_id)
+
+    expect(lesson.lesson_plan.language).toBe('ta')
+    expect(lesson.lesson_plan.scenes[0].heading).toContain('Python loop')
   })
 })

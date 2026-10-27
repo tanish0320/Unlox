@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BookOpen, Home, Moon, Sun, WifiOff } from 'lucide-react'
 import { BRAND_NAME, BRAND_TAGLINE } from './config/brand'
+import { LanguageCheck } from './components/LanguageCheck'
 import { Home as HomePage } from './pages/Home'
 import './App.css'
 
@@ -62,6 +63,9 @@ function ReaderIllustration() {
 }
 
 function App() {
+  const showLanguageCheck =
+    import.meta.env.DEV &&
+    new URLSearchParams(window.location.search).get('langtest') === '1'
   const [isDark, setIsDark] = useState(false)
   const [largeText, setLargeText] = useState(getSavedTextSize)
 
@@ -76,6 +80,8 @@ function App() {
       // The size control still works for this visit if storage is unavailable.
     }
   }, [largeText])
+
+  if (showLanguageCheck) return <LanguageCheck />
 
   return (
     <div className={`app-shell${isDark ? ' theme-dark' : ''}`}>

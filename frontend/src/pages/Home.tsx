@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, Download, Film, Languages, NotebookPen } from 'lucide-react'
+import { Check, Clipboard, Download, Film, Languages, NotebookPen } from 'lucide-react'
 import type { ReactNode } from 'react'
 import {
   notesUrl,
@@ -14,6 +14,7 @@ import { GenerationForm } from '../components/GenerationForm'
 import { GenerationProgress } from '../components/GenerationProgress'
 import { LessonIllustration } from '../components/LessonIllustration'
 import { LessonPlayer } from '../components/LessonPlayer'
+import { ResultView } from '../components/ResultView'
 
 const isMockMode = import.meta.env.VITE_USE_MOCK === 'true'
 
@@ -80,6 +81,16 @@ export function Home() {
   const [lastRequest, setLastRequest] = useState<GenerateRequest | null>(null)
   const [samplePreview, setSamplePreview] = useState(false)
   const [formKey, setFormKey] = useState(0)
+  const [copyMessage, setCopyMessage] = useState('')
+
+  async function copyNotes() {
+    try {
+      await window.navigator.clipboard.writeText(notesAsReadableText(lesson?.notes ?? ''))
+      setCopyMessage('Notes copied.')
+    } catch {
+      setCopyMessage('Could not copy notes. Please select and copy them from the Notes tab.')
+    }
+  }
 
   function submitLesson(request: GenerateRequest) {
     setLastRequest(request)
@@ -161,7 +172,18 @@ export function Home() {
           <span>{lesson ? 'YOUR LESSON' : shownLesson ? 'LESSON DETAILS' : 'LESSON PREVIEW'}</span>
         </div>
         {lesson && status?.status === 'ready' ? (
-          <LessonPlayer lesson={lesson} lessonId={jobId ?? ''} />
+          <>
+            <LessonPlayer lesson={lesson} lessonId={jobId ?? ''} />
+            {isMockMode && (
+              <p className="demo-text-note">
+                Demo sample text. Real narration comes from the local models.
+              </p>
+            )}
+            <ResultView
+              lesson={lesson}
+              fallbackUsed={status.fallback_used}
+            />
+          </>
         ) : shownLesson ? (
           <div className="ready-preview" aria-live="polite">
             <span className="ready-preview-icon" aria-hidden="true">
@@ -242,9 +264,63 @@ export function Home() {
                 Download Captions (SRT)
               </DownloadLink>
             )}
+            <button
+              className="download-link secondary"
+              type="button"
+              onClick={() => void copyNotes()}
+            >
+              <Clipboard size={17} aria-hidden="true" />
+              Copy notes
+            </button>
           </div>
+          {copyMessage && <p className="copy-notes-message" role="status">{copyMessage}</p>}
         </section>
       )}
     </main>
   )
+}
+
+function notesAsReadableText(notes: string) {
+  try {
+    const parsed: unknown = JSON.parse(notes)
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return notes
+    }
+    const data = parsed as Record<string, unknown>
+    const lines: string[] = []
+    if (typeof data.summary === 'string') lines.push(`Summary\n${data.summary}`)
+    if (Array.isArray(data.key_concepts)) {
+      const concepts = data.key_concepts.flatMap((item) => {
+        if (typeof item !== 'object' || item === null || Array.isArray(item)) return []
+        const concept = item as Record<string, unknown>
+        return typeof concept.term === 'string' && typeof concept.definition === 'string'
+          ? [`- ${concept.term}: ${concept.definition}`]
+          : []
+      })
+      if (concepts.length) lines.push(`Key concepts\n${concepts.join('\n')}`)
+    }
+    for (const [key, title] of [
+      ['steps', 'Steps'],
+      ['key_takeaways', 'Key takeaways'],
+    ]) {
+      const values = data[key]
+      if (Array.isArray(values)) {
+        const entries = values.filter((value): value is string => typeof value === 'string')
+        if (entries.length) lines.push(`${title}\n${entries.map((entry) => `- ${entry}`).join('\n')}`)
+      }
+    }
+    if (Array.isArray(data.revision_questions)) {
+      const questions = data.revision_questions.flatMap((item) => {
+        if (typeof item !== 'object' || item === null || Array.isArray(item)) return []
+        const question = item as Record<string, unknown>
+        return typeof question.question === 'string' && typeof question.answer === 'string'
+          ? [`Q: ${question.question}\nA: ${question.answer}`]
+          : []
+      })
+      if (questions.length) lines.push(`Revision questions\n${questions.join('\n')}`)
+    }
+    return lines.join('\n\n') || notes
+  } catch {
+    return notes
+  }
 }

@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react'
+import type { ReactNode } from 'react'
 import type { Scene } from '../api/types'
 import { ScenePlaceholder } from './placeholders/ScenePlaceholder'
 
@@ -15,6 +16,10 @@ export interface CaptionTrackProps {
 
 export interface NotesPreviewProps {
   notes: string
+}
+
+interface OptionalNotesPreviewProps extends NotesPreviewProps {
+  children?: ReactNode
 }
 
 interface ScenePluginModule {
@@ -65,9 +70,12 @@ export function OptionalCaptionTrack({
   return <>{text}</>
 }
 
-export function OptionalNotesPreview({ notes }: NotesPreviewProps) {
+export function OptionalNotesPreview({
+  notes,
+  children,
+}: OptionalNotesPreviewProps) {
   const NotesPreview = scenePlugin?.NotesPreview
-  if (!NotesPreview) return null
+  if (!NotesPreview) return <>{children}</>
   return (
     <details className="optional-notes">
       <summary>Lesson notes</summary>

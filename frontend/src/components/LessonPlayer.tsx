@@ -14,7 +14,6 @@ import { LANGUAGES } from '../config/languages'
 import { usePlayback, type PlaybackSpeed } from '../hooks/usePlayback'
 import {
   OptionalCaptionTrack,
-  OptionalNotesPreview,
   SceneStage,
 } from './SceneStage'
 
@@ -342,8 +341,6 @@ export function LessonPlayer({ lesson, lessonId }: LessonPlayerProps) {
           </div>
         </>
       )}
-
-      <OptionalNotesPreview notes={lesson.notes} />
     </div>
   )
 }
