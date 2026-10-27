@@ -1,0 +1,69 @@
+{
+  "schema_version": "1.0.0",
+  "title": "How a Python loop works",
+  "topic": "How does a Python loop work?",
+  "language": "en",
+  "level": "beginner",
+  "summary": "This beginner lesson on 'How does a Python loop work?' provides a 21.849s guided exploration in en, covering 3 animated stages.",
+  "learning_objectives": [
+    "Understand core principles of How does a Python loop work?",
+    "Analyze step-by-step logic in en narration",
+    "Synthesize practical conceptual takeaways"
+  ],
+  "key_concepts": [
+    {
+      "term": "How does a Python loop work?",
+      "definition": "Primary subject matter of this beginner instructional unit."
+    },
+    {
+      "term": "Sequential Flow",
+      "definition": "Progression across scenes synchronized with voice narration."
+    }
+  ],
+  "step_by_step_explanation": [
+    "Step 1 (How does a Python loop work?): A loop repeats an instruction for each value in a sequence. Let's see how Python makes this simple.",
+    "Step 2 (Step 1: Read the code): Range of three gives three values: zero, one, and two. The for loop assigns each value to variable i.",
+    "Step 3 (Step 2: Watch each iteration): Each pass takes the next value, runs print i, and stops when all items in the sequence are exhausted."
+  ],
+  "examples": [
+    {
+      "description": "Step 1: Read the code",
+      "code": "for i in range(3):\n    print(i)",
+      "output": "0\n1\n2"
+    }
+  ],
+  "key_takeaways": [
+    "Automate repetitive tasks",
+    "Iterate over sequences of data",
+    "Control execution flow",
+    "Diagram flow: Iteration 1: i = 0 -> print(0)",
+    "Diagram flow: Iteration 2: i = 1 -> print(1)",
+    "Diagram flow: Iteration 3: i = 2 -> print(2)"
+  ],
+  "revision_questions": [
+    {
+      "question": "What is the main takeaway regarding How does a Python loop work??",
+      "answer": "A loop repeats an instruction for each value in a sequence. Let's see how Python makes this simple."
+    },
+    {
+      "question": "How many distinct steps were covered in this lesson?",
+      "answer": "3 steps were demonstrated in sequence."
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "type": "video",
+      "filename": "lesson_en.mp4"
+    },
+    {
+      "type": "notes",
+      "filename": "lesson-notes.json"
+    }
+  ],
+  "model_metadata": {
+    "planner": "mock-planner",
+    "translator": null,
+    "tts": "mock-tts",
+    "fallback_used": false
+  }
+}

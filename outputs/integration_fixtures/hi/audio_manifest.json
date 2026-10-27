@@ -1,0 +1,64 @@
+{
+  "schema_version": "1.0.0",
+  "lesson_id": "integration_sample_hi",
+  "language": "hi",
+  "total_duration_seconds": 27.59,
+  "total_timeline_duration_seconds": 28.19,
+  "entries": [
+    {
+      "scene_id": "scene_01",
+      "audio_file": "outputs/integration_fixtures/hi/scene_01_hi.wav",
+      "duration_seconds": 9.63,
+      "language": "hi",
+      "voice_id": "mock_hi_v1",
+      "sample_rate": 24000,
+      "fallback_used": true,
+      "caption_segments": [
+        {
+          "start_seconds": 0.0,
+          "end_seconds": 9.63,
+          "global_start_seconds": 0.0,
+          "global_end_seconds": 9.63,
+          "text": "एक लूप किसी अनुक्रम में प्रत्येक मान के लिए निर्देश दोहराता है। आइए देखें कि पायथन इसे कैसे सरल बनाता है।"
+        }
+      ]
+    },
+    {
+      "scene_id": "scene_02",
+      "audio_file": "outputs/integration_fixtures/hi/scene_02_hi.wav",
+      "duration_seconds": 9.63,
+      "language": "hi",
+      "voice_id": "mock_hi_v1",
+      "sample_rate": 24000,
+      "fallback_used": true,
+      "caption_segments": [
+        {
+          "start_seconds": 0.0,
+          "end_seconds": 9.63,
+          "global_start_seconds": 9.93,
+          "global_end_seconds": 19.56,
+          "text": "तीन का range तीन मान देता है: शून्य, एक और दो। for लूप प्रत्येक मान को वेरिएबल i को सौंपता है।"
+        }
+      ]
+    },
+    {
+      "scene_id": "scene_03",
+      "audio_file": "outputs/integration_fixtures/hi/scene_03_hi.wav",
+      "duration_seconds": 8.33,
+      "language": "hi",
+      "voice_id": "mock_hi_v1",
+      "sample_rate": 24000,
+      "fallback_used": true,
+      "caption_segments": [
+        {
+          "start_seconds": 0.0,
+          "end_seconds": 8.33,
+          "global_start_seconds": 19.86,
+          "global_end_seconds": 28.19,
+          "text": "प्रत्येक पास अगला मान लेता है, print(i) चलाता है, और सभी आइटम समाप्त होने पर रुक जाता है।"
+        }
+      ]
+    }
+  ],
+  "fallback_used": true
+}

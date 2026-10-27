@@ -1,0 +1,64 @@
+{
+  "schema_version": "1.0.0",
+  "lesson_id": "integration_sample_en",
+  "language": "en",
+  "total_duration_seconds": 21.849,
+  "total_timeline_duration_seconds": 22.449,
+  "entries": [
+    {
+      "scene_id": "scene_01",
+      "audio_file": "outputs/integration_fixtures/en/scene_01_en.wav",
+      "duration_seconds": 7.018,
+      "language": "en",
+      "voice_id": "win_sapi5_desktop",
+      "sample_rate": 22050,
+      "fallback_used": false,
+      "caption_segments": [
+        {
+          "start_seconds": 0.0,
+          "end_seconds": 7.018,
+          "global_start_seconds": 0.0,
+          "global_end_seconds": 7.018,
+          "text": "A loop repeats an instruction for each value in a sequence. Let's see how Python makes this simple."
+        }
+      ]
+    },
+    {
+      "scene_id": "scene_02",
+      "audio_file": "outputs/integration_fixtures/en/scene_02_en.wav",
+      "duration_seconds": 7.833,
+      "language": "en",
+      "voice_id": "win_sapi5_desktop",
+      "sample_rate": 22050,
+      "fallback_used": false,
+      "caption_segments": [
+        {
+          "start_seconds": 0.0,
+          "end_seconds": 7.833,
+          "global_start_seconds": 7.318,
+          "global_end_seconds": 15.151,
+          "text": "Range of three gives three values: zero, one, and two. The for loop assigns each value to variable i."
+        }
+      ]
+    },
+    {
+      "scene_id": "scene_03",
+      "audio_file": "outputs/integration_fixtures/en/scene_03_en.wav",
+      "duration_seconds": 6.998,
+      "language": "en",
+      "voice_id": "win_sapi5_desktop",
+      "sample_rate": 22050,
+      "fallback_used": false,
+      "caption_segments": [
+        {
+          "start_seconds": 0.0,
+          "end_seconds": 6.998,
+          "global_start_seconds": 15.451,
+          "global_end_seconds": 22.449,
+          "text": "Each pass takes the next value, runs print i, and stops when all items in the sequence are exhausted."
+        }
+      ]
+    }
+  ],
+  "fallback_used": false
+}

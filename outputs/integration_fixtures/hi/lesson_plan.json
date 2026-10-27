@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0.0",
+  "title": "पायथन लूप कैसे काम करता है",
+  "topic": "How does a Python loop work?",
+  "level": "beginner",
+  "language": "hi",
+  "target_duration_seconds": 60,
+  "scenes": [
+    {
+      "id": "scene_01",
+      "heading": "पायथन लूप कैसे काम करता है?",
+      "narration": "एक लूप किसी अनुक्रम में प्रत्येक मान के लिए निर्देश दोहराता है। आइए देखें कि पायथन इसे कैसे सरल बनाता है।",
+      "type": "title_card",
+      "subtitle": "प्रोग्रामिंग में पुनरावृत्ति को समझना",
+      "key_points": [
+        "Automate repetitive tasks",
+        "Iterate over sequences of data",
+        "Control execution flow"
+      ]
+    },
+    {
+      "id": "scene_02",
+      "heading": "चरण 1: कोड पढ़ें",
+      "narration": "तीन का range तीन मान देता है: शून्य, एक और दो। for लूप प्रत्येक मान को वेरिएबल i को सौंपता है।",
+      "type": "code_walkthrough",
+      "code": "for i in range(3):\n    print(i)",
+      "code_language": "python",
+      "highlight_lines": [
+        1
+      ],
+      "expected_output": "0\n1\n2"
+    },
+    {
+      "id": "scene_03",
+      "heading": "चरण 2: प्रत्येक पुनरावृत्ति देखें",
+      "narration": "प्रत्येक पास अगला मान लेता है, print(i) चलाता है, और सभी आइटम समाप्त होने पर रुक जाता है।",
+      "type": "diagram",
+      "items": [
+        "Iteration 1: i = 0 -> print(0)",
+        "Iteration 2: i = 1 -> print(1)",
+        "Iteration 3: i = 2 -> print(2)"
+      ],
+      "layout": "horizontal",
+      "structured_nodes": null
+    }
+  ]
+}

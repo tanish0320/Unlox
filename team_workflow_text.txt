@@ -1,0 +1,154 @@
+FOUR-PERSON TEAM WORKFLOW
+Blu Visual Teacher Hackathon | Offline-first implementation blueprint
+Prepared from the supplied six-page hackathon problem statement, with implementation recommendations and repository research clearly separated from mandatory requirements.
+1. Team and hardware
+Four-person team; two i5 13th-gen/16 GB laptops (one with NVIDIA RTX 3050) and two lower-end 8 GB laptops. Use the RTX laptop for model experiments and final integration, but the final demo must also work CPU-only. Lower-end laptops are suitable for UI, SVG scenes, schemas, tests and docs; avoid assigning them heavy model inference.
+2. Role allocation
+3. Shared contract before parallel work (first 45 minutes)
+Create one Git repository and a shared branch strategy. Protect main; integrate through small pull requests or direct reviewed merges.
+Agree the exact LessonPlan schema and allowed scene types: title_card, diagram, code_walkthrough.
+Agree API endpoints: POST /api/lessons/generate; GET /api/lessons/{id}/status; GET /api/lessons/{id}; GET /api/lessons/{id}/video; GET /api/lessons/{id}/notes.
+Create a sample lesson JSON and mock API response immediately so UI and scenes can proceed in parallel.
+Decide one renderer by hour 1: Inkling-style HTML/SVG + Puppeteer + FFmpeg OR Remotion. Do not integrate both by default.
+Agree the three demo languages and validate voice availability before promising them.
+Add a README section for licences and a local/offline checklist from the beginning.
+4. Parallel workstreams and interface details
+Person 1 — AI, language and integration
+Start with Ollama installed and a small model already downloaded. Test structured JSON output against the exact schema.
+Implement planner adapter with timeout, one retry and deterministic fallback.
+Benchmark local TTS on a short script in English and the two chosen Indian languages; do not assume a model is fast enough just because it runs.
+Test IndicTrans2 only for selected language pairs and protect code tokens, numerals and technical terms.
+Define audio manifest per scene: scene_id, file_path, duration_seconds, language, voice_id.
+Integrate only through the agreed API/data contract; keep all inference local.
+Person 2 — API, export and reliability
+Implement request validation, job IDs/status, artifact storage and typed errors.
+Build export from fixed sample scene assets first; output 1280×720 H.264 video and AAC audio.
+Make the audio the source of truth for scene duration; add only a small transition/pause margin.
+Generate JSON notes from the validated canonical plan, not from a separate unrelated prompt.
+Add fallback MP4 and sample notes so a failed model cannot block the demo.
+Write tests for malformed JSON, missing audio, missing font, FFmpeg failure and Wi-Fi-off operation.
+Person 3 — frontend and player
+Create a clean single-page form: topic, level, language, duration and Generate.
+Implement progress states for planning, translation, narration, rendering and complete.
+Use mock API responses and sample assets first; don't wait for backend to finish.
+Implement play, pause, next scene, replay, caption visibility and progress display.
+Add separate Download MP4 and Download JSON Notes actions, plus clear errors/retry.
+Test a small mobile viewport and multilingual input labels.
+Person 4 — scene engine and notes
+Implement title_card with heading and caption area.
+Implement diagram with typed nodes, labels and arrows; animate only from approved properties.
+Implement code_walkthrough with code string, highlighted line numbers and visible output panel.
+Add caption rendering with bundled Noto fonts for every chosen script.
+Create notes JSON renderer/preview and fixtures for all three languages.
+Write scene component tests using the agreed schema and ensure unknown scene type is rejected safely.
+5. Integration gates
+6. Git and collaboration rules
+Suggested folders: frontend/src/components/scenes, frontend/src/components/player, backend/app/api, backend/app/schemas, backend/app/services/planner, backend/app/services/tts, backend/app/services/translation, backend/app/services/render, backend/app/services/export, assets/fallback, outputs/.
+Person 1 owns final integration and release tagging; Person 2 reviews API/schema/export changes; Persons 3 and 4 avoid changing backend contracts without discussion.
+Commit small vertical slices. Use the sample JSON as a shared fixture; avoid committing huge model files or generated videos unless needed for fallback.
+Use a local config file or environment variables for paths, but no secrets or cloud API keys should be required.
+Pin dependency versions and verify that all required assets are present before the offline test.
+7. Daily stand-up format (every 2–3 hours)
+What is working now? Show it running, not just describe it.
+What exact artifact will be merged in the next two hours?
+What interface/schema/API change is needed? Agree before editing.
+What is blocked and who can unblock it?
+Does the end-to-end sample still work after the last merge?
+8. Feature-cut order if time slips
+Never cut: MP4 export, JSON notes, local-only runtime, three scene types, three required languages, audio sync, fallback.
+Cut first: voice choice, speed control, caching, extra scene types, sophisticated transitions, history/library, existing-MP4 support, chatbot.
+Prefer clean SVG/CSS visuals and readable captions over cinematic effects.
+Do not leave the offline verification until the final 10 minutes; test it at least once by hour 18 and again before the demo.
+9. Demo rehearsal checklist
+Turn Wi-Fi off before launching the app.
+Start local services and verify models/assets load from disk.
+Enter a fresh topic, choose a language and generate.
+Show the lesson playing in browser with captions and scene controls.
+Download and play the MP4; confirm 1280×720 and audio.
+Download JSON notes and parse them with a JSON validator.
+Stop Ollama or trigger a planner failure and show the fallback lesson still works.
+Keep one known-good MP4 per required language on disk as a last-resort demo safety net.
+10. Key recommendation
+Your original idea to put the two 8 GB laptops on UI is sound, but split their work: one owns the application shell/player and the other owns the visual scene components and notes UI. Keep AI/model experiments on the RTX laptop, and put backend/export reliability on the other i5/16 GB laptop. All four work against one schema and one chosen renderer.
+11. Exact repository usage and ownership
+These are the repositories the team should actually plan around. The team should not clone every repository in the research list. Use the recommended path below, with one renderer and a tested local TTS stack.
+12. Repositories explicitly NOT to integrate in the 24-hour MVP
+OpenMAIC (https://github.com/THU-MAIC/OpenMAIC): useful classroom UX reference, but a broader application than needed. Do not make it the base unless the team has already verified every needed feature runs offline.
+Chitralekha (https://github.com/AI4Bharat/Chitralekha): focuses on existing-video transcription/translation/voice-over, not topic-to-new-animated-video. Save it for a future uploaded-video workflow.
+IndicConformerASR (https://github.com/AI4Bharat/IndicConformerASR) and WhisperX (https://github.com/m-bain/whisperX): not core requirements for generated narration when the TTS chunk duration is known. Add only if a measured need justifies the complexity.
+Do not integrate Inkling and Remotion together by default. Pick one renderer.
+Do not add hosted model providers, cloud TTS, cloud translation or remote asset loading.
+13. Repo selection gate — finish by hour 1
+Clone/install Ollama, the selected renderer, FFmpeg and frontend dependencies.
+Generate one scene locally and export a short MP4 from a fixed sample.
+Run a short TTS sample in English and both candidate Indian languages; record latency and memory.
+Check IndicTrans2 quality and runtime only for the selected language pairs.
+Select the final TTS and renderer based on working evidence, not README claims alone.
+Keep model and voice licence details in README; never assume code licence covers model weights.
+14. Revised final recommendation
+Use a small custom React/Vite/TypeScript + FastAPI application. Adopt Ollama for the local planner; use Inkling as the first renderer reference plus FFmpeg for export; evaluate IndicTrans2 for translation and Kokoro ONNX / IndicF5 for local TTS. Use Remotion only as an alternative renderer. Do not integrate OpenMAIC or Chitralekha into the MVP. The team owns the schema, API and three scene components, which keeps the architecture simple and demoable offline.
+15. Start all four teammates simultaneously — zero-wait kickoff
+Goal: all four teammates should produce working code from the first hour, without waiting for the AI model, backend API or another teammate. The way to achieve this is to freeze a tiny contract, provide fixtures/mocks, and split work by files and interfaces.
+15.1 First 20 minutes: one-time setup together
+Create one shared GitHub repository. Add a README, .gitignore, license/attribution notes, and folders before splitting.
+Choose a single package manager (npm) and Python environment strategy (venv + pinned requirements). Do not let each teammate invent a different setup.
+Freeze the LessonPlan schema and three scene types: title_card, diagram, code_walkthrough.
+Create one fixtures/sample-lesson.json plus fixtures/sample-notes.json and mock job-status responses. Everyone can work against these immediately.
+Agree file ownership and route contracts below. Changes to shared schema require a quick group decision.
+Pick one renderer by minute 20: Inkling-style HTML/SVG + browser capture + FFmpeg is the default; Remotion is the alternative, never both initially.
+15.2 Parallel workstreams from minute 20
+15.3 Freeze these contracts so no one blocks anyone
+15.4 Git strategy for parallel work
+Use one shared repo with main as the known-good branch and four branches: feat/local-ai, feat/backend-export, feat/ui-player, feat/scene-components.
+Each teammate commits only their owned files initially. Avoid simultaneous edits to shared schema, package.json or API client contracts.
+Person 2 creates the initial schema/fixture, then announces the version; thereafter schema changes are coordinated rather than silently edited.
+Person 3 and Person 4 can work in the same frontend repo because their file ownership is separated; Person 3 owns the shell/player, Person 4 owns scenes/notes components.
+Use local mock responses so frontend development is not blocked by the API. Person 2 uses fixed audio and sample plan so export isn't blocked by model work.
+Merge at least every 2–3 hours; don't wait until the end. Person 1 is integration lead, Person 2 reviews schema/export, and each author tests their slice.
+15.5 First three hours, by checkpoint
+15.6 Rules to preserve parallelism
+Every task must have an independent fixture and a clear output artifact.
+Never block UI work on Ollama; never block MP4 export on a live model response.
+Never block scene work on TTS; use prerecorded audio and duration fixtures initially.
+Keep one renderer, one schema and one API contract.
+Run the offline end-to-end test early and again after final integration.
+At hour 5, all four streams should already have working slices; if not, reduce scope and remove integration blockers.
+Person | Primary ownership | Deliverables | Must not duplicate
+Person 1 — you, RTX 3050 / 16 GB | AI pipeline + integration lead | Ollama planner adapter; prompt/schema integration; local TTS and translation experiments; audio timing; final end-to-end integration; offline demo gate. | Don't build a second renderer or let model output execute as code.
+Person 2 — i5 13th gen / 16 GB | Backend + export/reliability | FastAPI endpoints; Pydantic schemas; job status; fallback handling; FFmpeg exporter; artifact download endpoints; timing and format tests. | Coordinate renderer choice with Person 1; don't independently invent a second schema.
+Person 3 — 8 GB laptop A | Frontend shell + player | React/Vite/TS form; language/level/duration controls; progress/errors; player controls; download buttons; responsive layout. | Use mocked API responses until backend endpoints are ready; no model inference required.
+Person 4 — 8 GB laptop B | Scene components + notes UI/tests | Title card, diagram and code walkthrough components; captions; notes JSON display; font/script checks; sample lesson fixtures; UI component tests. | Only render allowlisted typed data; don't build a separate app or alter the shared schema alone.
+Gate / target time | Required outcome | Decision
+Gate 1 — hour 2 | Schema, sample JSON, API contract and renderer chosen. | No parallel feature work until interfaces are agreed.
+Gate 2 — hour 5 | One hard-coded lesson plays and exports MP4 + notes JSON. | If this fails, cut styling/bonus features and fix export.
+Gate 3 — hour 9 | Ollama planner feeds the renderer with schema validation and fallback. | If slow/unreliable, reduce prompt/model size and keep fallback.
+Gate 4 — hour 14 | Three languages have working local narration and captions on the sample. | If a voice fails, use a pretested local alternative/fallback; don't fake language selection.
+Gate 5 — hour 18 | Frontend, API and downloads integrated. | Freeze schema; avoid large refactors.
+Gate 6 — hour 21 | Wi-Fi-off and CPU-only tests pass; README/licences included. | No new features after this point.
+Final — hour 24 | Rehearsed demo, two MP4 lesson examples, JSON notes and fallback assets. | Keep a known-good build ready.
+Person | Repository / tool | Action | Deliverable
+Person 1 — RTX 3050 / 16 GB | Ollama — https://github.com/ollama/ollama | Install local runtime/model; test structured JSON output, speed and memory; implement planner adapter. | Local planner service with validated plan and deterministic fallback.
+Person 1 — RTX 3050 / 16 GB | IndicTrans2 — https://github.com/AI4Bharat/IndicTrans2 | Benchmark only for the selected two Indian languages; pre-download model files and dependencies. | Local translation adapter or documented reason to use an alternative.
+Person 1 — RTX 3050 / 16 GB | Kokoro ONNX — https://github.com/pguso/kokoro; alternative IndicF5 — https://github.com/AI4Bharat/IndicF5 | Test narration quality and CPU latency for the three exact demo languages; choose the smallest passing solution. | One working local TTS adapter per required language plus fallback audio.
+Person 2 — i5 13th gen / 16 GB | Inkling — https://github.com/ahkamboh/inkling; FFmpeg — https://ffmpeg.org/ | Use Inkling as a reference or selective base for deterministic scene rendering and FFmpeg assembly; build export and media timing tests. | MP4 exporter: 1280×720 H.264/AAC; audio-driven scene duration; optional SRT.
+Person 2 — i5 13th gen / 16 GB | Remotion — https://github.com/remotion-dev/remotion (alternative only) | Use only if the team explicitly chooses it instead of Inkling by hour 1. | Do not maintain two renderers.
+Person 3 — 8 GB laptop A | React + Vite + TypeScript — https://vite.dev/guide/ and https://react.dev/ | Create a small frontend project rather than adopting a cloud-dependent all-in-one app. | Input form, progress states, player controls, MP4/JSON download buttons.
+Person 4 — 8 GB laptop B | React SVG/CSS components; Noto fonts — https://github.com/notofonts/noto-fonts | Build the three allowed scene components and test caption glyphs in selected scripts. | title_card, diagram, code_walkthrough components and visual fixtures.
+Person | Start immediately | Files / ownership | Mock/dependency strategy | First checkpoint
+Person 1 — RTX 3050 / 16 GB | Build local AI adapters and benchmark models. | backend/app/services/planner.py; backend/app/services/translation.py; backend/app/services/tts.py; scripts/model_smoke_test.py | Write adapters behind interfaces; until model works, return fixtures/sample plan. Download model files in parallel while coding. | Hour 2: local Ollama produces schema-valid JSON or deterministic fallback.
+Person 2 — i5 / 16 GB | Build renderer/exporter from fixed fixtures. | backend/app/services/render.py; backend/app/services/export.py; backend/app/schemas/lesson.py; backend/app/api/jobs.py | Use sample JSON and prerecorded short audio first; don't wait for live TTS. Render a fixed 3-scene lesson. | Hour 3: sample MP4 + notes JSON exported.
+Person 3 — 8 GB laptop A | Build the complete frontend against mock APIs. | frontend/src/pages/Home.tsx; frontend/src/components/GenerationForm.tsx; frontend/src/components/LessonPlayer.tsx; frontend/src/api/client.ts | Use MSW or a local mock module with fixed job IDs/status/artifact URLs. The UI should run without backend. | Hour 2: form, progress, player and download controls work on fixtures.
+Person 4 — 8 GB laptop B | Build scene components and notes display against sample JSON. | frontend/src/components/scenes/TitleCard.tsx; DiagramScene.tsx; CodeWalkthroughScene.tsx; CaptionTrack.tsx; NotesPreview.tsx; frontend/src/styles/ | Use fixtures/sample-lesson.json and mock audio timings. Export still handled by Person 2; components remain pure React/SVG. | Hour 2: all three scenes render locally from the agreed schema.
+Contract | Frozen initial definition
+Lesson plan fixture | schema_version, title, level, language, target_duration_seconds, scenes[]. Each scene has id, type, heading, narration and typed content.
+Scene types | title_card, diagram, code_walkthrough only for MVP.
+Frontend API | POST /api/lessons/generate → {lesson_id,status}; GET /api/lessons/{id}/status → {status,stage,progress_percent,message}; GET /api/lessons/{id} → {lesson_plan,notes,artifact_manifest}.
+Artifacts | GET /api/lessons/{id}/video returns MP4; GET /api/lessons/{id}/notes returns UTF-8 JSON attachment.
+Audio manifest | scene_id, audio_file, duration_seconds, language, voice_id. Scene duration is derived from actual audio duration.
+Fallback | Bundled sample plan, per-language sample audio where available, and a known-good sample MP4; never fake a successful live generation.
+File boundaries | Person 1 owns model adapters; Person 2 owns API/schema/export; Person 3 owns form/player/API client; Person 4 owns scene components/captions/notes preview.
+Time | Person 1 | Person 2 | Person 3 | Person 4
+0:00–0:20 | Join contract decision; install/check Ollama. | Create schema/fixtures and API skeleton. | Create Vite app and mock API client. | Create scene component skeletons and load fixture.
+0:20–1:00 | Test small model JSON output; begin TTS language benchmark. | Render fixed scenes and establish FFmpeg export. | Build form, progress state and download controls. | Build title card, diagram and code walkthrough.
+1:00–2:00 | Implement planner adapter and fallback. | Export fixed MP4 and JSON notes; add status endpoints. | Complete player controls using mocks. | Add captions, script fonts and notes preview.
+2:00–3:00 | Connect planner to shared schema; report language results. | Integrate real scene renderer; verify H.264/AAC output. | Switch from mocks to real API if available; otherwise continue UI polish. | Provide scene components to Person 2; run visual fixtures/tests.

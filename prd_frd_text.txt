@@ -1,0 +1,289 @@
+PRODUCT & FUNCTIONAL REQUIREMENTS
+Blu Visual Teacher Hackathon | Offline-first implementation blueprint
+Prepared from the supplied six-page hackathon problem statement, with implementation recommendations and repository research clearly separated from mandatory requirements.
+1. Executive summary
+Blu Visual Teacher is a local-first teaching-video engine. A learner enters a concept, level, language and target duration. A local language model produces a schema-validated lesson plan. The application renders deterministic animated scenes, generates narration and captions using local models, synchronizes scene timing to the actual audio, and exports a 1280×720 MP4 plus structured JSON study notes. It must operate with Wi-Fi disabled after setup.
+2. Source requirements vs implementation decisions
+3. Product goals and success criteria
+A user can enter a new topic and receive a playable lesson and two downloadable artifacts: lesson.mp4 and lesson-notes.json.
+The same lesson can be generated in English and at least two chosen Indian languages without requiring a new topic plan for every language.
+Scene timing follows generated narration duration, not hard-coded guesses.
+The app remains demoable if Ollama or another model call fails, using a bundled sample lesson and pre-generated fallback assets.
+All runtime dependencies, model files, fonts and assets are local; a clean offline demo succeeds with Wi-Fi disabled.
+The README lists model, voice, code and asset licences plus tested laptop specifications.
+4. Target users and primary journey
+Primary user: a student or teacher who wants a concise, visual explanation of a concept in a familiar language.
+5. Functional requirements (FR)
+6. Non-functional requirements
+7. Functional design / module boundaries
+8. Proposed data contracts
+8.1 LessonPlan (internal JSON)
+Required top-level fields: schema_version, title, level, source_language, target_language, target_duration_seconds, scenes[]. Each scene has id, type, heading, narration, and typed content. Optional fields: visual description, source references, glossary, learning objectives.
+Allowed scene types for MVP: title_card, diagram, code_walkthrough. Unknown types are rejected or mapped to fallback; arbitrary HTML/JS/Python from the model is forbidden.
+8.2 JSON notes export
+Suggested fields: title, language, level, summary, learning_objectives[], key_concepts[{term, definition}], steps[], examples[], key_takeaways[], revision_questions[{question, answer}]. Use UTF-8 and ensure non-Latin script survives round-trip.
+8.3 Artifact manifest
+Suggested manifest: lesson_id, plan_version, language, duration_seconds, video_path, notes_path, subtitle_path (optional), model_versions, created_at, fallback_used, timings_by_stage.
+9. API contract (proposed)
+10. Error handling and fallback policy
+Planner timeout/model unavailable → use prevalidated sample plan.
+Invalid JSON/schema mismatch → one constrained retry; if still invalid, use sample plan.
+Translation unavailable → show explicit language failure; do not silently label English audio as translated. For the main demo, bundle fallback audio for every required language.
+TTS failure → use pre-generated fallback audio for the sample lesson; never export a silent or misleadingly labelled video.
+FFmpeg/render failure → preserve plan and notes, show export error, and keep fallback MP4 downloadable.
+Missing font glyphs → fail language preflight and use bundled Noto fonts; verify captions in actual MP4.
+11. Repository reuse plan
+Repository research sources: Inkling documents SVG/CSS → deterministic frames → FFmpeg MP4 and an MIT licence (https://github.com/ahkamboh/inkling); Ollama documents schema-constrained JSON output (https://github.com/ollama/ollama/blob/main/docs/api.md); IndicTrans2 documents 22 scheduled languages and MIT model checkpoints (https://github.com/AI4Bharat/IndicTrans2); pguso/kokoro documents offline CPU inference and supported voice list (https://github.com/pguso/kokoro). All components and their actual model weights must be independently audited before use.
+12. Recommended MVP architecture
+Recommended default: React/Vite/TypeScript UI + FastAPI orchestration + Ollama planner + local TTS/translation adapters + one deterministic renderer + FFmpeg + local filesystem/SQLite. Pick either Inkling-style HTML/SVG frame capture or Remotion. For a 24-hour build, Inkling is a particularly direct reference for deterministic SVG/CSS scenes and FFmpeg assembly, while the team can keep its own JSON schema and UI.
+13. Definition of done
+Generate a new lesson from a typed topic and selected language/level/duration.
+At least three scene types render correctly and are navigable in browser.
+English plus two selected Indian languages have local narration and correct-script captions.
+A new lesson exports to 1280×720 H.264/AAC MP4 and valid JSON notes.
+Scene timing derives from real narration audio durations.
+Wi-Fi-off demo passes on the target laptop; CPU-only path works.
+Fallback path works when the planner is unavailable or returns invalid data.
+README includes setup, model/voice/assets licences, tested specs, offline instructions and known limitations.
+14. Test plan
+15. Risks and mitigations
+16. Suggested 24-hour build order
+Hours 0–2: agree schema/API, pick renderer, download dependencies/models, create repo and sample JSON.
+Hours 2–5: hard-coded lesson renders in browser and exports MP4 + notes JSON. This is the first gate.
+Hours 5–9: integrate Ollama with schema-constrained output and fallback.
+Hours 9–14: integrate TTS and translation; measure audio durations; captions and scene sync.
+Hours 14–18: UI integration, progress, downloads and error states.
+Hours 18–21: offline, CPU-only, multilingual and output-format tests.
+Hours 21–24: freeze features, README/licences, rehearse demo and retain fallback assets.
+17. Open decisions to resolve immediately
+Which two Indian languages will be supported in the demo? Choose based on available tested local voices.
+Will the renderer be Inkling-style Puppeteer + FFmpeg or Remotion? Choose one by hour 1.
+Which local TTS model can produce acceptable narration in all three demo languages within the laptop budget?
+Which small Ollama model has acceptable JSON reliability and CPU latency on the 8–16 GB target?
+Is MP4 caption burn-in the default? Recommended for reliable playback; optional SRT is a bonus.
+18. Exact repository shortlist — what to use, not just consider
+This is the recommended adoption plan for the hackathon. Keep the application small and local. Do not clone every candidate repository or merge whole applications together. Reuse the narrow components/models identified below.
+19. Final stack decision
+Frontend: React + Vite + TypeScript (new small app; no need to adopt a whole frontend repository).
+Backend/orchestration: Python + FastAPI + Pydantic (new thin API service).
+Local planner: Ollama + one small pre-downloaded instruction model.
+Renderer: Inkling-style deterministic SVG/CSS scene rendering and local browser capture, plus FFmpeg. If Inkling code does not adapt quickly, implement the minimal renderer directly rather than losing hours; Remotion is the single alternative.
+Translation: IndicTrans2 only after a language-pair benchmark confirms runtime and quality.
+Narration: benchmark Kokoro ONNX and IndicF5 for the exact three demo languages; pick the smallest reliable local path. A pre-generated local sample voice track is mandatory as fallback.
+Outputs: lesson.mp4 and lesson-notes.json. Optionally provide lesson.srt.
+Do not include WhisperX/ASR in the core pipeline unless the team chooses to verify speech with ASR; TTS audio durations are the timing source for generated lessons.
+20. Repository acceptance checklist
+Every selected repository is cloned or its package/binary is installed before the hackathon offline gate.
+Code, model weights, tokenizer files, voices, fonts and any browser binaries are stored locally.
+Run the selected pipeline with Wi-Fi disabled and confirm no external URLs are requested.
+Inspect licences separately for source code, model weights, voices, fonts and assets.
+Record model version, exact language/voice, peak RAM and generation time in README.
+If a repository adds integration complexity without contributing directly to MP4 + JSON notes, remove it from the MVP.
+21. Detailed implementation specification and repository decision record
+This section tightens the earlier PRD/FRD into an implementation-ready plan. The hackathon brief is authoritative for must-have scope. Repository descriptions below are based on their public documentation and must be validated against the exact version/model files the team installs. A repository being open source does not mean every model weight, voice, font or optional integration has the same licence.
+21.1 Final recommended stack (MVP)
+21.2 Exact repositories and how to use them
+21.3 Renderer decision: how the repo is actually reused
+Default path: inspect Inkling's render.js/build.sh/scene examples and reuse the deterministic render pattern only if it can be adapted quickly to the team’s schema.
+Blu must render only three allowlisted component types: title_card, diagram, code_walkthrough. The LLM provides typed fields, not HTML, JS, CSS or Python source.
+If adapting Inkling would require broad changes or its shell scripts create Windows friction, stop porting it and implement a minimal renderer with the same concept: local HTML/SVG scenes → Puppeteer/Playwright screenshots or frame sequence → FFmpeg.
+Remotion is the one alternative. Decide by hour 1 after a short spike; do not combine renderers.
+Export must include audio and captions. Verify the final MP4 itself, not only the browser preview.
+21.4 Language plan and TTS decision gate
+Pick two Indian languages only after testing a short 2–3 sentence sample on the exact target hardware. English + Hindi + Kannada is a plausible candidate set, but do not promise it until the chosen local voices pass.
+For English/Hindi, benchmark Kokoro's actual local voice files. Its repo lists Hindi voices but not Tamil/Telugu/Kannada voice IDs.
+For additional Indian languages, benchmark IndicF5 and/or IndicParler-TTS. Check the required reference audio/transcript inputs and model-weight licences.
+Run TTS on CPU on the weakest laptop or the intended demo machine. Record cold-start time, warm inference time, peak RAM and output audio quality.
+If live TTS is too slow, keep a pre-generated local fallback for the bundled sample lesson in every required language. Do not falsely label English speech as a translated voice.
+Use a bundled Noto font subset for each script and visually inspect both browser captions and burned-in MP4 captions.
+21.5 Audio timing and export contract
+Synthesize narration separately for each scene, preferably as WAV/PCM intermediate assets.
+Record a manifest per scene: scene_id, audio_path, duration_seconds, language, voice_id, sample_rate, and optional caption segments.
+The renderer uses measured duration_seconds plus a small pause/transition; it must not assign arbitrary fixed scene durations.
+Keep a cumulative timeline and derive each scene's start/end from the sum of prior measured durations; use the same timeline for caption placement and export.
+Final MP4 requirements: 1280×720, H.264 video, AAC audio, playable with common browsers/players. Burn captions into the video for robust viewing; optionally also export SRT.
+Validate with ffprobe or equivalent: dimensions, codecs, duration, audio stream presence and output file size.
+21.6 Notes JSON specification
+The notes file is a separate required artifact, not a copy of the internal scene plan. Generate it from the validated canonical lesson data. Recommended required keys:
+schema_version, title, topic, language, level, summary, learning_objectives[], key_concepts[{term, definition}], step_by_step_explanation[], examples[{description, code?, output?}], key_takeaways[], revision_questions[{question, answer}], generated_artifacts[{type, filename}], model_metadata{planner, translator, tts}.
+Serialize as UTF-8 JSON and preserve Unicode characters directly; do not corrupt Devanagari/Tamil/Telugu/Kannada script through ASCII-only conversion.
+Validate JSON before exposing the download; include no comments or trailing commas.
+Do not invent unsupported facts in notes. Keep the notes grounded in the approved lesson plan and, if present, supplied source content.
+If fallback plan is used, the notes must describe that fallback lesson and metadata should record fallback_used=true.
+21.7 API and frontend behavior
+UI stages: Validating input → Planning lesson → Translating → Generating narration → Rendering scenes → Exporting MP4 → Ready.
+The Generate button is disabled while a job is active; errors show a retry or fallback state rather than a spinner forever.
+The frontend can use mocked endpoints and fixtures until the backend is ready; no UI work should block on AI integration.
+The browser player should offer play/pause, next scene, replay, caption visibility and progress. On phones, avoid heavy DOM animations and use pre-rendered MP4 for smooth playback.
+21.8 Security, offline, licences and distribution
+Model output is untrusted data. Validate types, lengths, numeric ranges, allowed IDs, allowed scene types and URL fields. Never execute code emitted by the LLM.
+Block remote asset loading in rendering; all fonts, icons, audio, scripts and images must be local.
+Use network monitoring or disable Wi-Fi for the acceptance test. Ollama's local endpoint is acceptable; any hosted endpoint is not.
+Before the event, download model weights, tokenizers, voices, fonts, Python wheels/npm packages and Puppeteer/Chromium binaries needed by the renderer.
+Audit licences independently for source repository, model weights, voice packs, sample/reference audio, fonts, FFmpeg build and any included visual assets.
+Document model/version, quantization, licence URL, language, voice ID, file size and tested RAM/runtime in README.
+Do not bundle large model files in Git; provide a local setup script that checks whether expected files exist and fails with an offline-friendly message.
+21.9 Performance targets and measurements
+21.10 Final acceptance test script
+Start app and local model services before disabling Wi-Fi; then switch Wi-Fi off.
+Enter a new beginner topic, choose one of the supported Indian languages, and request a 30–90 second lesson.
+Verify the lesson plan is valid JSON and contains 3–6 approved scenes.
+Verify title card, labelled diagram and code walkthrough render without executing model-generated code.
+Verify local narration exists, captions use the correct script and each scene duration derives from actual audio.
+Play the lesson in browser; test play, pause, next scene and replay.
+Download lesson.mp4 and lesson-notes.json. Inspect the MP4 codecs/dimensions and parse the JSON.
+Repeat for English and the second Indian language.
+Stop Ollama or force invalid JSON; confirm fallback lesson still plays and exports.
+Record timings, RAM, machine specs and known limitations in README.
+21.11 What is explicitly not in the 24-hour MVP
+Uploading and translating existing MP4 videos (Chitralekha-style workflow).
+A full chatbot, user accounts, cloud storage, remote analytics or online collaboration.
+Dynamic model-generated JavaScript/Python/HTML execution.
+Multiple competing rendering frameworks in one build.
+ASR-based timing for generated narration when audio duration is already known.
+Voice marketplace, advanced caching, many extra scene types, complex motion design or a lesson library.
+21.12 Implementation decisions to freeze before parallel work
+Choose the exact two Indian demo languages based on working local TTS, not preference alone.
+Choose Inkling-style browser frame capture or Remotion by hour 1.
+Choose the exact local planner model and quantization; save model name/version in config.
+Choose the TTS engine per required language and download all assets.
+Freeze LessonPlan schema, Notes schema and API contract in fixtures before teammates work in parallel.
+Set a maximum time budget for each component; if it fails, use the pre-generated local fallback rather than risk the end-to-end deliverable.
+Type | Requirement / decision
+Hackathon must-have | 24-hour build; typed concept → 30–90 second narrated animated lesson; English plus at least two Indian languages.
+Hackathon must-have | No external AI APIs; models run on the machine; after setup, full pipeline works offline.
+Hackathon must-have | Laptop target is CPU-only 8–16 GB RAM; browser playback should be smooth on a modest phone.
+Hackathon must-have | LLM returns JSON only; app never executes model-written JS/Python; visuals come from components built by the team.
+Hackathon must-have | At least three scene types: title card, labelled diagram with arrows, code walkthrough.
+Hackathon must-have | Browser playback controls: play, pause, next scene, replay.
+Hackathon must-have | MP4 export: 1280×720, H.264 video, AAC audio; captions burned in or provided as .srt.
+Requested deliverable | Also export structured notes as a downloadable UTF-8 JSON file.
+Implementation recommendation | React + TypeScript UI, Python/FastAPI local service, Ollama local planner, local TTS/translation, FFmpeg renderer/exporter.
+Out of scope for MVP | Existing-MP4 translation/transcreation; user-uploaded video ingestion; cloud accounts; remote inference; arbitrary LLM-generated code execution.
+Step | User action | System response
+1. Configure | Enter topic; choose beginner/intermediate; choose language; choose 30–90 seconds. | Validate fields and show the generation action.
+2. Plan | Click Generate lesson. | Local planner produces JSON; schema validator checks it; retry once or use fallback on failure.
+3. Prepare speech | Wait while lesson is generated. | Translate narration if required, synthesize audio locally, and calculate actual audio durations.
+4. Render | View progress. | Render approved scene components and synchronize captions to scene audio.
+5. Review | Play lesson in browser. | Play/pause, next scene and replay work; captions render in the correct script.
+6. Export | Download outputs. | Download MP4 and lesson-notes.json; optionally download SRT.
+ID | Requirement | Priority | Acceptance criteria
+FR-01 | Concept input: topic, level, language and target duration. | P0 | All values reach backend; invalid/empty topic is rejected with helpful error.
+FR-02 | Local lesson planning via Ollama or equivalent local LLM. | P0 | Planner outputs JSON conforming to versioned schema; no remote endpoint is called.
+FR-03 | Schema validation and safe parsing. | P0 | Invalid fields/types/scene types are rejected; model output is never executed as code.
+FR-04 | Built-in fallback lesson. | P0 | If model fails or returns invalid data, fallback lesson plays and exports.
+FR-05 | Three reusable scene types. | P0 | Title card, labelled diagram with arrows, code walkthrough render correctly.
+FR-06 | Browser lesson player. | P0 | Play, pause, next scene, replay, progress and captions work.
+FR-07 | Local narration in English plus two Indian languages. | P0 | All three languages have tested local voice assets; generated audio is playable offline.
+FR-08 | Local translation and script rendering. | P0 | Translated narration/captions use correct script; fonts are bundled locally.
+FR-09 | Audio-driven scene timing. | P0 | Each scene duration is derived from actual audio length plus a small pause; no cumulative drift.
+FR-10 | MP4 export. | P0 | 1280×720 H.264/AAC video is playable and downloadable.
+FR-11 | JSON notes export. | P0 | Download is valid UTF-8 JSON with summary, concepts, steps, example, takeaways and revision questions.
+FR-12 | Generation progress and errors. | P0 | UI distinguishes planning, translation, TTS, rendering and complete/failed states.
+FR-13 | Language re-voice without re-planning. | P1 | Reuse approved scene plan; regenerate translated narration/captions for selected language.
+FR-14 | Voice selection and speed control. | P2 | Only implement after all P0 requirements pass.
+FR-15 | Cache completed lessons. | P2 | Cache key includes topic, level, language, duration, schema version and model/version identifiers.
+ID | Requirement | Verification
+NFR-01 Offline | No external requests at runtime; model assets and fonts pre-downloaded. | Disable Wi-Fi and run complete generation/export.
+NFR-02 Resource footprint | Aim for CPU-only operation on 8–16 GB RAM; GPU is an optional accelerator. | Record peak RAM, generation time and export time on target laptop.
+NFR-03 Reliability | A model failure must not block demo playback. | Stop Ollama or provide malformed output; fallback still works.
+NFR-04 Safety | Never execute model-produced code; render only allowlisted scene types and typed fields. | Test malicious strings, unknown scene types and invalid JSON.
+NFR-05 Accessibility/readability | Readable captions, sufficient contrast, legible code and phone-friendly playback. | Test on small viewport and all selected scripts.
+NFR-06 Maintainability | Separate planner, language, TTS, renderer, exporter and UI modules. | Each module can be tested independently.
+NFR-07 Licensing | List model, voice, dependency and asset licences in README. | Review actual code and weight licences before bundling.
+Module | Responsibility | Inputs → outputs
+Frontend (React/Vite/TS) | Form, progress, player, downloads, errors. | User input/API results → UI.
+API/orchestrator (FastAPI) | Validate request, create job, orchestrate stages, expose status/artifacts. | Generation request → job state and artifact paths.
+Lesson planner | Prompt local LLM with schema and constraints. | Topic/level/duration → LessonPlan JSON.
+Schema validator | Pydantic validation and semantic checks. | Raw JSON → approved typed plan or fallback.
+Language adapter | Translate narration/captions; preserve code/identifiers. | Canonical English plan → language-specific plan.
+TTS adapter | Generate audio per scene, save WAV/PCM and duration metadata. | Narration text/language/voice → audio chunks.
+Scene renderer | Render allowlisted SVG/HTML/React scenes. | Plan + scene data + audio timings → frames/video segments.
+Exporter | Mux scenes, audio and captions; create MP4 and optional SRT. | Scene segments + audio + caption timing → MP4/SRT.
+Notes exporter | Build notes from canonical plan and validate JSON. | Plan + educational notes → lesson-notes.json.
+Local storage | Store jobs, plans, audio, outputs and cache. | Local files + SQLite metadata.
+Endpoint | Purpose | Key response
+POST /api/lessons/generate | Start generation. | 202 + {lesson_id, status}.
+GET /api/lessons/{id}/status | Poll stage progress. | {status, stage, progress_percent, message}.
+GET /api/lessons/{id} | Return plan/notes metadata. | {lesson_plan, notes, artifact_manifest}.
+GET /api/lessons/{id}/video | Download MP4. | video/mp4 stream/file.
+GET /api/lessons/{id}/notes | Download notes. | application/json attachment.
+GET /api/lessons/{id}/subtitles | Optional SRT download. | text/plain attachment.
+Repository | Role in Blu | Adoption stance / caveat
+Ollama — https://github.com/ollama/ollama | Local planner; supports JSON schema-constrained structured outputs. | Adopt as local runtime; pin model/version and test CPU-only.
+Inkling — https://github.com/ahkamboh/inkling | Reference or selective reuse for deterministic SVG/CSS animation, Puppeteer frame capture and FFmpeg MP4 assembly. | MIT listed in repo; inspect implementation and adapt its scene format; don't depend on its YouTube ingestion path.
+Remotion — https://github.com/remotion-dev/remotion | Alternative React composition-to-video renderer. | Choose instead of Inkling, not in addition, unless there is a specific reason. Check licensing for intended use.
+IndicTrans2 — https://github.com/AI4Bharat/IndicTrans2 | Local Indian-language translation. | Model checkpoints listed as MIT; weights are larger than typical web dependencies; pre-download and test latency.
+Kokoro Rust — https://github.com/pguso/kokoro | Offline TTS candidate, especially supported English/Hindi voices. | The repo describes offline CPU fallback and quantized models; confirm Hindi voice, licence and exact package/platform compatibility.
+IndicF5 — https://github.com/AI4Bharat/IndicF5 | Alternative Indian-language TTS candidate. | Prototype only after testing language coverage, reference-audio requirements, runtime and voice/model licence.
+IndicConformerASR — https://github.com/AI4Bharat/IndicConformerASR | Optional speech recognition/verification. | Not required for generated narration if timing is derived from TTS chunks; omit from MVP to save time.
+Test | Expected result
+Valid simple topic | Valid plan, scenes, audio, MP4 and notes.
+Empty topic / unsupported duration | Validation error before model call.
+Malformed planner JSON | Retry once then fallback.
+Ollama stopped | Fallback lesson still playable/exportable.
+Wi-Fi disabled | No network dependency; end-to-end success.
+Indian script captions | No tofu/missing glyphs in browser or MP4.
+Long narration scene | Scene duration follows audio; captions stay synchronized.
+Export inspection | 1280×720, H.264 video, AAC audio, expected duration.
+Notes round trip | JSON parses and contains required fields; Unicode preserved.
+8 GB CPU test | Record peak RAM and timings; avoid crash/swap thrashing.
+Risk | Mitigation
+Local TTS for third language too slow or poor | Select languages early; pre-download and benchmark; ship per-language fallback audio for the sample.
+Model response too slow on CPU | Use small quantized model; limit prompt/output tokens; cache; preflight warm-up.
+Scene and narration drift | Render each scene from actual audio duration; mux using measured durations.
+Scope creep | Defer ASR, upload-existing-MP4, voice controls, advanced charts and chatbot until P0 passes.
+Repo incompatibility | Reuse narrow modules/patterns, not entire applications; lock interface contracts.
+Licence or offline uncertainty | Review code, weights, voices, fonts and runtime requests individually.
+Decision | Repository / URL | Use in Blu | Adoption rule
+USE | Ollama — https://github.com/ollama/ollama | Run the local instruction model that creates lesson-plan JSON. | Required local runtime. Download the model before the event; test schema-constrained output and CPU-only latency.
+USE / adapt selectively | Inkling — https://github.com/ahkamboh/inkling | Reference/reuse deterministic SVG/CSS scene animation, browser frame capture and FFmpeg MP4 assembly patterns. | Preferred renderer starting point for this 24-hour build. Inspect code and licence; replace its input format with Blu's validated scene schema. Do not adopt unrelated ingestion features.
+USE | FFmpeg — https://ffmpeg.org/ (source: https://github.com/FFmpeg/FFmpeg) | Encode/mux the final 1280×720 H.264 video with AAC audio and optional SRT. | Required local binary. Bundle/install it before offline testing; verify codec availability.
+USE if selected-language benchmark passes | IndicTrans2 — https://github.com/AI4Bharat/IndicTrans2 | Translate narration/captions from a canonical lesson into the chosen Indian languages. | Use only if it fits the time/RAM budget and model/weight licence is verified. Pre-download all assets.
+USE one TTS path per required language | Kokoro ONNX — https://github.com/pguso/kokoro | Candidate local English/Hindi narration path. | Test the exact voice, language quality, model licence and CPU performance. Do not assume it covers all three required languages.
+FALLBACK / alternative TTS | IndicF5 — https://github.com/AI4Bharat/IndicF5 | Evaluate for supported Indian-language narration if Kokoro does not cover the selected language. | Prototype only: confirm language coverage, inference requirements, reference audio/transcript requirements and licences.
+OPTIONAL; omit from MVP unless needed | IndicConformerASR — https://github.com/AI4Bharat/IndicConformerASR | Speech recognition/verification for existing audio. | Not required to align generated narration if timing is taken from TTS audio durations. Avoid adding it unless it solves a demonstrated need.
+ALTERNATIVE renderer — do NOT combine by default | Remotion — https://github.com/remotion-dev/remotion | React-based composition rendering to MP4. | Choose this instead of Inkling if the team is more productive with React timelines. Check current licence terms and dependencies.
+NOT recommended as the base | OpenMAIC — https://github.com/THU-MAIC/OpenMAIC | Reference only for classroom UX ideas. | Too broad for this narrow 24-hour brief; audit cloud/model dependencies before reusing anything.
+NOT required for the brief | Chitralekha — https://github.com/AI4Bharat/Chitralekha | Existing-video transcription/transcreation reference. | Do not integrate for MVP: the core task is topic → new lesson MP4, not editing/translation of uploaded MP4s.
+Layer | Decision | Reason / constraint
+Frontend | React + Vite + TypeScript (new app) | Fast parallel UI development; browser playback and download controls.
+Scene renderer | Custom typed React/SVG/CSS components; use Inkling as the first implementation reference | Blu requires three predictable scene types and no model-written executable code. Inkling's public README describes deterministic SVG/CSS frames captured by Puppeteer and stitched by FFmpeg. Reuse selectively, not as a black-box application.
+MP4 export | FFmpeg local binary | Explicit output requirement: 1280×720 H.264 video + AAC audio. Use locally installed/bundled FFmpeg and verify codecs.
+Local LLM | Ollama + a small instruction model already downloaded | Generates JSON plan only. Ollama supports schema-constrained structured outputs through its local API; validate independently with Pydantic.
+Backend | Python + FastAPI + Pydantic (new service) | Keeps model adapters, job orchestration, schema validation and file export separate from UI.
+Translation | IndicTrans2 only after target-language benchmark | Supports the 22 scheduled Indian languages; its repo lists model checkpoints as MIT, but runtime and package requirements need pretesting.
+TTS | Benchmark local TTS per selected language; Kokoro ONNX for supported English/Hindi voices; evaluate IndicF5 for supported Indian languages | Do not assume one voice/model covers all three required languages. Select based on offline quality, latency, memory and licence.
+Notes | Generate JSON notes from the validated canonical lesson plan | Keeps video and notes consistent and avoids an extra unrelated model call.
+Storage | Local filesystem + SQLite only if job history/cache is needed | No remote database. Files are local artifacts; avoid overbuilding persistence for 24 hours.
+Repository / link | Use? | Specific purpose | Caveats / validation
+Ollama — https://github.com/ollama/ollama | YES | Local LLM runtime for lesson-plan JSON. Use a JSON schema in the request's format field and validate again in backend. | Pull model before offline run; test model's JSON reliability and CPU latency on 8–16 GB. Runtime must not call remote providers.
+Inkling — https://github.com/ahkamboh/inkling | YES, selective reference/adaptation | Reference implementation for animated SVG/CSS scenes, Puppeteer frame capture, deterministic rendering and FFmpeg assembly. Its repo lists MIT and Node 18+ / FFmpeg requirements. | Its default project is a hand-drawn explainer toolkit with an AI-agent-authored scene workflow; adapt it to Blu's allowlisted JSON scene schema. Avoid YouTube ingestion/Whisper paths. Verify Windows shell/build behavior and avoid relying on agent-generated code at runtime.
+FFmpeg — https://ffmpeg.org/ ; source https://github.com/FFmpeg/FFmpeg | YES | Final mux/encode stage for MP4, H.264, AAC and optional SRT/subtitle burn-in. | Check build configuration has the needed encoders; check distribution/licence implications for the exact build. All assets must be local.
+IndicTrans2 — https://github.com/AI4Bharat/IndicTrans2 | CONDITIONAL YES | Translate canonical narration and caption text into chosen Indian languages; supports 22 scheduled languages. | Benchmark selected language pairs and model size. Pre-download weights/tokenizer. Preserve code, identifiers, numbers and technical terms; use a glossary and spot-check educational meaning.
+Kokoro Rust/ONNX wrapper — https://github.com/pguso/kokoro | CANDIDATE for English/Hindi | Offline TTS candidate with quantized ONNX model variants and Hindi voice IDs documented in repo. | It is a Rust library, not automatically a drop-in Python HTTP service. Decide whether to wrap it in a local CLI/service or use a Python ONNX implementation. Confirm exact voice/model licence and pronunciation.
+IndicF5 — https://github.com/AI4Bharat/IndicF5 | CANDIDATE for Indian languages | TTS candidate supporting Assamese, Bengali, Gujarati, Hindi, Kannada, Malayalam, Marathi, Odia, Punjabi, Tamil and Telugu. | Requires text, reference audio and reference transcript per its README; Python 3.10 setup shown. Benchmark startup/inference memory and voice quality. Verify model weights and reference-audio licensing.
+IndicParler-TTS — https://github.com/AI4Bharat/Indic-Parler-TTS | ALTERNATIVE to benchmark | Potential local multilingual TTS option for Indian languages if IndicF5 is too heavy or unsuitable. | Do not commit until selected language coverage, model licence, download size and CPU runtime are checked on the actual laptop.
+Remotion — https://github.com/remotion-dev/remotion | ALTERNATIVE renderer only | React composition-based video rendering if team prefers a native React timeline and components. | Choose it instead of Inkling-style browser capture; do not integrate both for the MVP. Check current licence and render dependencies.
+React + Vite — https://vite.dev/guide/ and https://react.dev/ | YES, new app | Frontend for topic form, progress, player, scene preview and artifact downloads. | Do not adopt an all-in-one hosted video platform; use local assets and local API only.
+Noto Fonts — https://github.com/notofonts/noto-fonts | YES, selected files only | Bundle fonts covering chosen scripts so captions render correctly in browser and exported MP4. | Download only required font files; check font licences and confirm glyph coverage in final video.
+Chitralekha — https://github.com/AI4Bharat/Chitralekha | NO for MVP | Useful only if a future phase accepts existing videos for transcription/translation/voice-over. | Does not solve topic-to-new-animated-video core requirement.
+OpenMAIC — https://github.com/THU-MAIC/OpenMAIC | REFERENCE ONLY | May provide classroom UI ideas, but the hackathon needs a smaller deterministic video engine. | Too broad to integrate under 24-hour constraints; all optional providers and network calls would need an audit.
+IndicConformerASR — https://github.com/AI4Bharat/IndicConformerASR | NOT IN MVP | Could be used later to verify speech recognition or process uploaded audio. | Generated narration timing should come from known TTS chunk duration; adding ASR increases install and runtime cost.
+WhisperX — https://github.com/m-bain/whisperX | NOT IN MVP | Word-level alignment/transcription candidate for future user-uploaded audio. | Not necessary for first generated lesson; language accuracy and local resource footprint need testing.
+Endpoint | Request | Response / behavior
+POST /api/lessons/generate | {topic, level, language, target_duration_seconds} | Return {lesson_id, status:'queued'}. Reject invalid fields before launching model.
+GET /api/lessons/{id}/status | No body | Return {status, stage, progress_percent, message, fallback_used}.
+GET /api/lessons/{id} | No body | Return validated lesson plan, notes metadata, artifact manifest and warnings.
+GET /api/lessons/{id}/video | No body | Stream/download video/mp4 only after export passes validation.
+GET /api/lessons/{id}/notes | No body | Download lesson-notes.json as application/json.
+GET /api/lessons/{id}/subtitles | No body; optional | Download SRT if generated.
+Metric | Target / measurement
+Offline correctness | 100% of acceptance run succeeds with Wi-Fi off.
+Video format | 1280×720, H.264, AAC; duration within target range where possible.
+Scene sync | No audible narration is cut off; transitions and captions follow measured audio durations.
+Planner | Record cold-start and warm generation time; use a small model and bounded output.
+TTS | Measure per-language cold start, synthesis time per scene, real-time factor and peak RAM.
+Memory | Record peak resident memory on the target laptop; avoid simultaneous loading of planner, translator and TTS if RAM pressure is high.
+Fallback | Known-good sample lesson remains playable/exportable if planner/TTS fails.
+Browser playback | No long blocking render in UI; display status and play final MP4 smoothly on a modest phone.
