@@ -286,6 +286,10 @@ export const App: React.FC = () => {
 
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  const [controlsVisible, setControlsVisible] = useState(true);
+
+  const controlsTimeoutRef = useRef<any>(null);
+
   const [isMuted, setIsMuted] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -721,13 +725,44 @@ export const App: React.FC = () => {
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
+  const handleUserActivity = () => {
+    setControlsVisible(true);
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+    }
+    if (document.fullscreenElement && isPlaying) {
+      controlsTimeoutRef.current = setTimeout(() => {
+        setControlsVisible(false);
+      }, 3000);
+    }
+  };
+
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      const inFs = !!document.fullscreenElement;
+      setIsFullscreen(inFs);
+      if (!inFs) {
+        setControlsVisible(true);
+        if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+      }
     };
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
+
+  useEffect(() => {
+    if (!isFullscreen || !isPlaying) {
+      setControlsVisible(true);
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    } else {
+      controlsTimeoutRef.current = setTimeout(() => {
+        setControlsVisible(false);
+      }, 3000);
+    }
+    return () => {
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    };
+  }, [isFullscreen, isPlaying]);
 
   useEffect(() => {
     const handleGlobalKey = (e: KeyboardEvent) => {
@@ -1900,7 +1935,14 @@ export const App: React.FC = () => {
 
                       {/* 16:9 Deterministic Animated Stage */}
 
-                      <div className="bvt-player-stage-wrap" ref={playerContainerRef}>
+                      <div
+                        className={`bvt-player-wrapper ${isFullscreen ? "is-fullscreen" : ""} ${controlsVisible ? "controls-visible" : "controls-hidden"}`}
+                        ref={playerContainerRef}
+                        onMouseMove={handleUserActivity}
+                        onMouseEnter={handleUserActivity}
+                      >
+                        {/* 16:9 Deterministic Animated Stage */}
+                        <div className="bvt-player-stage-wrap">
 
                         <SceneRenderer
 
@@ -2160,6 +2202,7 @@ export const App: React.FC = () => {
                             </svg>
                           )}
                         </button>
+                      </div>
                       </div>
 
 
