@@ -8,6 +8,7 @@ import { loadProgress, saveProgress, resetProgress, STORAGE_KEY } from "../game/
 import { useGameProgress } from "../game/state/useGameProgress";
 import { DialogueOverlay } from "../game/components/DialogueOverlay";
 import { QuizModal } from "../game/components/QuizModal";
+import { GameHUD } from "../game/components/GameHUD";
 import { GameLaunchPayload, TeacherDef } from "../game/types";
 import { HALLWAY_NPCS, CLASSROOM_NPCS, getRoomNPCs } from "../game/data/npcDefinitions";
 import { NPCManager } from "../game/engine/NPCManager";
@@ -546,6 +547,75 @@ describe("Blu Academy — NPC Population, Scaling & Signage Polish Suite", () =>
     const bottomSignH = 32;
     expect(bottomSignY + bottomSignH).toBeLessThan(corridor.gridHeight * 32);
     expect(bottomSignY).toBeGreaterThan(0);
+  });
+
+  it("renders dedicated ~60px HUD bar with compact controls above game viewport without overlap", () => {
+    const { getByTestId, getByText } = render(
+      <GameHUD
+        currentRoom={CLASSROOMS.corridor}
+        progress={loadProgress()}
+        onSelectRoom={vi.fn()}
+        onOpenProgress={vi.fn()}
+        onExitGame={vi.fn()}
+      />
+    );
+
+    const hud = getByTestId("blu-academy-hud");
+    expect(hud).toBeDefined();
+    expect(hud.tagName.toLowerCase()).toBe("header");
+    expect(hud.style.height).toBe("60px");
+    expect(hud.style.minHeight).toBe("60px");
+    expect(hud.style.position).toBe("relative"); // In normal layout flow, not position: absolute!
+
+    // Verify presence of left section controls
+    expect(getByText("Academy Grand Hallway")).toBeDefined();
+    expect(getByText("🗺️ Map & Quick Visit")).toBeDefined();
+
+    // Verify presence of right section controls
+    expect(getByText("Level 1")).toBeDefined();
+    expect(getByText("Studio")).toBeDefined();
+    expect(getByText("Fullscreen")).toBeDefined();
+  });
+
+  it("calculates camera transform correctly for post-HUD viewport heights across desktop resolutions", () => {
+    // 60px dedicated HUD bar leaves remaining height (screenH - 60):
+    const viewports = [
+      { w: 1366, h: 708, fullH: 768, name: "1366x768" },
+      { w: 1280, h: 660, fullH: 720, name: "1280x720" },
+      { w: 1920, h: 1020, fullH: 1080, name: "1920x1080" },
+      { w: 1024, h: 708, fullH: 768, name: "1024x768" },
+    ];
+
+    for (const vp of viewports) {
+      // 1. Grand Hallway camera in post-HUD viewport:
+      // When player approaches upper towers (y = 2.0), camera reaches top (camY = 0)
+      const topHallwayT = getCameraTransform(corridor, { x: 13, y: 2.0 }, vp.w, vp.h);
+      expect(topHallwayT.camY).toBe(0);
+
+      // Upper signs are at world y = 4px; in canvas pixels: 4 * zoom >= 4px > 0
+      const upperSignCanvasY = 4 * topHallwayT.zoom - topHallwayT.camY;
+      expect(upperSignCanvasY).toBeGreaterThanOrEqual(0);
+      expect(upperSignCanvasY + 32 * topHallwayT.zoom).toBeLessThan(vp.h);
+
+      // 2. When player approaches southern wings (y = 15.0), camera reaches bottom (camY = max)
+      const bottomHallwayT = getCameraTransform(corridor, { x: 13, y: 15.0 }, vp.w, vp.h);
+      const bottomSignCanvasY = 464 * bottomHallwayT.zoom - bottomHallwayT.camY;
+      expect(bottomSignCanvasY).toBeGreaterThan(0);
+      expect(bottomSignCanvasY + 32 * bottomHallwayT.zoom).toBeLessThanOrEqual(vp.h);
+
+      // 3. Classrooms fit inside post-HUD viewport and remain centered
+      for (const roomId of roomIds) {
+        const room = CLASSROOMS[roomId];
+        const roomT = getCameraTransform(room, { x: 9.5, y: 11.0 }, vp.w, vp.h);
+        const screenW = room.gridWidth * 32 * roomT.zoom;
+        const screenH = room.gridHeight * 32 * roomT.zoom;
+
+        expect(screenW).toBeLessThanOrEqual(vp.w + 1);
+        expect(screenH).toBeLessThanOrEqual(vp.h + 1);
+        expect(roomT.camX).toBeCloseTo((screenW - vp.w) / 2, 1);
+        expect(roomT.camY).toBeCloseTo((screenH - vp.h) / 2, 1);
+      }
+    }
   });
 });
 

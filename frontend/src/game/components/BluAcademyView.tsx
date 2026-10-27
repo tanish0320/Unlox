@@ -106,13 +106,14 @@ export const BluAcademyView: React.FC<BluAcademyViewProps> = ({
         onExitGame={onExitGame}
       />
 
-      {/* 2D Canvas Viewport */}
+      {/* Game Viewport Container: occupies ALL remaining height after 60px HUD */}
       <div
+        data-testid="game-viewport-container"
         style={{
           position: "relative",
           width: "100%",
-          height: "100%",
           flex: 1,
+          minHeight: 0,
           overflow: "hidden",
         }}
       >
