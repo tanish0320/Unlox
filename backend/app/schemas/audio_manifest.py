@@ -90,6 +90,36 @@ class AudioManifest(BaseModel):
         self.total_timeline_duration_seconds = round(cumulative, 3)
         return self
 
+    def create_sub_manifest(
+        self, scene_ids: List[str], scene_pause_padding: float = 0.3
+    ) -> "AudioManifest":
+        """
+        Creates an independent sub-manifest for a given subset of scene IDs (e.g., an individual part),
+        preserving audio file references while recalculating timestamps relative to the part start.
+        """
+        filtered_entries = []
+        for sid in scene_ids:
+            for entry in self.entries:
+                if entry.scene_id == sid or entry.scene_id.startswith(f"{sid}_"):
+                    cp = entry.model_copy(deep=True)
+                    cp.scene_id = sid  # Normalize to canonical scene_id
+                    filtered_entries.append(cp)
+                    break
+
+        if not filtered_entries:
+            raise ValueError(f"No audio entries found matching scene IDs: {scene_ids}")
+
+        raw_duration = sum(e.duration_seconds for e in filtered_entries)
+        sub_manifest = AudioManifest(
+            schema_version=self.schema_version,
+            lesson_id=self.lesson_id,
+            language=self.language,
+            total_duration_seconds=round(raw_duration, 3),
+            entries=filtered_entries,
+            fallback_used=any(e.fallback_used for e in filtered_entries),
+        )
+        return sub_manifest.compute_global_timeline(scene_pause_padding=scene_pause_padding)
+
 
 class MultiLanguageAudioManifest(BaseModel):
     """Container for multi-language lessons."""

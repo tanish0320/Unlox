@@ -17,6 +17,10 @@ class BaseScene(BaseModel):
     id: str = Field(..., description="Unique scene identifier, e.g. 'scene_1'")
     heading: str = Field(..., min_length=2, max_length=120, description="On-screen title/heading")
     narration: str = Field(..., min_length=5, max_length=2000, description="Spoken narration script")
+    part_id: Optional[str] = Field(None, description="Identifier of the containing lesson part")
+    is_edited: Optional[bool] = Field(False, description="Flag indicating user-edited scene")
+    original_heading: Optional[str] = Field(None, description="Original heading before edit")
+    original_narration: Optional[str] = Field(None, description="Original narration script before edit")
 
     @field_validator("narration", "heading")
     @classmethod
@@ -142,6 +146,14 @@ class QuizQuestion(BaseModel):
     concept_reference: Optional[str] = Field(None, description="Specific concept or formula referenced")
 
 
+class LessonPart(BaseModel):
+    part_id: str = Field(..., description="Unique part identifier, e.g. 'part_1'")
+    part_number: int = Field(..., ge=1, description="1-indexed part number")
+    title: str = Field(..., min_length=2, max_length=150, description="Part title or theme")
+    description: Optional[str] = Field(None, max_length=300, description="Brief description of part's pedagogical focus")
+    scene_ids: List[str] = Field(..., min_length=1, description="Ordered scene IDs belonging to this part")
+
+
 class LessonPlan(BaseModel):
     schema_version: str = Field(default="1.0.0", description="SemVer schema specification")
     title: str = Field(..., min_length=3, max_length=150, description="Main lesson title")
@@ -157,6 +169,9 @@ class LessonPlan(BaseModel):
     )
     target_duration_seconds: Optional[int] = Field(
         default=60, ge=30, le=300, description="Requested target duration hint (30-300s, 1-5 mins)"
+    )
+    parts: List[LessonPart] = Field(
+        default_factory=list, description="Ordered list of modular lesson parts"
     )
     scenes: List[SceneVariant] = Field(
         ..., min_length=3, max_length=6, description="Sequence of 3 to 6 animated scenes"
@@ -182,6 +197,74 @@ class LessonPlan(BaseModel):
     quiz_questions: List[QuizQuestion] = Field(
         default_factory=list, description="Structured 4-option quiz questions grounded in lesson facts"
     )
+
+    @model_validator(mode="after")
+    def populate_and_sync_parts(self) -> "LessonPlan":
+        """
+        Ensures backward compatibility:
+        - If parts is empty, automatically partitions scenes into coherent parts based on target duration.
+        - Ensures every scene has a valid part_id matching its containing part.
+        """
+        if not self.scenes:
+            return self
+
+        scene_id_map = {s.id: s for s in self.scenes}
+
+        if not self.parts:
+            # Auto-partition legacy lessons or lessons without explicit parts
+            # Default part length ~ 60s (approx 2 scenes per part for 30s-per-scene)
+            total_scenes = len(self.scenes)
+            target_dur = self.target_duration_seconds or (total_scenes * 30)
+
+            if target_dur <= 60 or total_scenes <= 3:
+                num_parts = 1
+            elif target_dur <= 120 or total_scenes <= 5:
+                num_parts = 2
+            elif target_dur <= 180 or total_scenes <= 7:
+                num_parts = 3
+            else:
+                num_parts = min(4, max(1, total_scenes // 2))
+
+            # Distribute scenes evenly across parts
+            scenes_per_part = max(1, total_scenes // num_parts)
+            constructed_parts: List[LessonPart] = []
+            
+            for p_idx in range(num_parts):
+                p_num = p_idx + 1
+                start_i = p_idx * scenes_per_part
+                end_i = (p_idx + 1) * scenes_per_part if p_num < num_parts else total_scenes
+                slice_ids = [s.id for s in self.scenes[start_i:end_i]]
+                if not slice_ids:
+                    continue
+                p_id = f"part_{p_num}"
+                p_title = f"Part {p_num} — {self.topic if p_num == 1 else 'Core Concepts & Application'}"
+                constructed_parts.append(
+                    LessonPart(
+                        part_id=p_id,
+                        part_number=p_num,
+                        title=p_title,
+                        description=f"Part {p_num} exploring {self.topic}",
+                        scene_ids=slice_ids,
+                    )
+                )
+            self.parts = constructed_parts
+
+        # Sync scene.part_id for each scene
+        part_lookup = {}
+        for p in self.parts:
+            for sid in p.scene_ids:
+                part_lookup[sid] = p.part_id
+
+        for s in self.scenes:
+            if s.id in part_lookup:
+                s.part_id = part_lookup[s.id]
+            elif self.parts:
+                # Default to first part if orphaned
+                s.part_id = self.parts[0].part_id
+                if s.id not in self.parts[0].scene_ids:
+                    self.parts[0].scene_ids.append(s.id)
+
+        return self
 
     @field_validator("scenes")
     @classmethod

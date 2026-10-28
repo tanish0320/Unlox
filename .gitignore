@@ -27,6 +27,7 @@ outputs/stage2_tests/
 outputs/test_tts_samples/
 outputs/trace_duration_report.json
 outputs/verification_screenshot.png
+outputs/cache/
 *.db
 Screenshot *.png
 

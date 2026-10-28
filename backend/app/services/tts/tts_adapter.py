@@ -11,9 +11,12 @@ Provides:
 """
 
 from abc import ABC, abstractmethod
+import hashlib
+import json
 import math
 import os
 from pathlib import Path
+import shutil
 import struct
 import subprocess
 import sys
@@ -431,10 +434,20 @@ class LocalTTSDispatcher:
         self.use_system_tts = use_system_tts
         self.allow_mock = allow_mock
 
+        self.cache_dir = Path("outputs") / "cache" / "audio"
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self.cache_hits = 0
+        self.cache_misses = 0
+
         self.neural_adapter = LocalNeuralTTSAdapter()
         self.kokoro_adapter = KokoroTTSAdapter()
         self.windows_adapter = WindowsLocalTTSAdapter()
         self.mock_adapter = MockTTSAdapter()
+
+    def compute_cache_key(self, text: str, language: str, voice_id: Optional[str] = None) -> str:
+        """Computes a SHA256 content key from voice, language, and stripped narration text."""
+        raw_key = f"{voice_id or 'default'}:{language.lower().strip()}:{text.strip()}"
+        return hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
 
     def get_supported_voices(self) -> Dict[str, Dict[str, Any]]:
         """Returns verified status and setup instructions for all supported curriculum languages."""
@@ -512,50 +525,104 @@ class LocalTTSDispatcher:
         out_file = self.output_dir / f"{scene_id}_{language}.wav"
         lang = language.lower().replace("-", "_").split("_")[0]
 
-        # 0. Dispatch to Kokoro Neural Engine for English when requested or available (unless SAPI5 requested)
+        # 0. Check disk cache for existing synthesized WAV
+        cache_key = self.compute_cache_key(text, lang, voice_id)
+        cached_wav = self.cache_dir / f"{cache_key}.wav"
+        cached_meta = self.cache_dir / f"{cache_key}.json"
+
+        if cached_wav.is_file() and cached_meta.is_file():
+            try:
+                meta = json.loads(cached_meta.read_text(encoding="utf-8"))
+                shutil.copyfile(cached_wav, out_file)
+                self.cache_hits += 1
+                dur = meta.get("duration_seconds") or measure_wav_duration(out_file)
+                entry = SceneAudioEntry(
+                    scene_id=scene_id,
+                    audio_file=str(out_file.as_posix()),
+                    duration_seconds=dur,
+                    language=language,
+                    voice_id=meta.get("voice_id", voice_id or f"cached_{lang}"),
+                    sample_rate=meta.get("sample_rate", 24000),
+                    fallback_used=meta.get("fallback_used", False),
+                    caption_segments=[
+                        CaptionSegment(
+                            start_seconds=0.0,
+                            end_seconds=dur,
+                            text=text,
+                        )
+                    ],
+                )
+                return entry, entry.fallback_used
+            except Exception:
+                pass  # Fallback to synthesis on corrupt cache
+
+        self.cache_misses += 1
+
+        entry = None
+        fallback_used = False
+
+        # 1. Dispatch to Kokoro Neural Engine for English when requested or available (unless SAPI5 requested)
         is_sapi5_requested = bool(voice_id and any(s in voice_id.lower() for s in ["sapi5", "david", "zira"]))
         if not is_sapi5_requested and ((voice_id and voice_id.startswith("kokoro")) or (
             lang in ("en", "eng")
             and self.kokoro_adapter.is_available()
         )):
             try:
-                return self.kokoro_adapter.synthesize_scene(
+                entry, fallback_used = self.kokoro_adapter.synthesize_scene(
                     scene_id=scene_id, text=text, language=language, output_path=out_file, voice_id=voice_id
                 )
             except Exception as kokoro_err:
                 print(f"Kokoro synthesis failed ({kokoro_err}), attempting system SAPI5 fallback")
 
-        # 1. Dispatch to Neural TTS (Piper) for verified native neural speech (Hindi, Telugu, etc.)
-        if self.neural_adapter.is_language_supported(lang):
-            return self.neural_adapter.synthesize_scene(
+        # 2. Dispatch to Neural TTS (Piper) for verified native neural speech (Hindi, Telugu, Tamil, Kannada)
+        if entry is None and self.neural_adapter.is_language_supported(lang):
+            entry, fallback_used = self.neural_adapter.synthesize_scene(
                 scene_id=scene_id, text=text, language=language, output_path=out_file
             )
 
-        # 2. Dispatch to Windows SAPI5 (English, or Windows Hindi if installed)
-        if self.use_system_tts and self.windows_adapter.is_language_supported(lang):
+        # 3. Dispatch to Windows SAPI5 (English, or Windows Hindi if installed)
+        if entry is None and self.use_system_tts and self.windows_adapter.is_language_supported(lang):
             try:
-                return self.windows_adapter.synthesize_scene(
+                entry, fallback_used = self.windows_adapter.synthesize_scene(
                     scene_id=scene_id, text=text, language=language, output_path=out_file, voice_id=voice_id
                 )
             except Exception:
                 pass
 
-        # 3. Isolated Mock Adapter (permitted ONLY when explicitly flagged for unit tests)
-        if self.allow_mock:
-            return self.mock_adapter.synthesize_scene(
+        # 4. Isolated Mock Adapter (permitted ONLY when explicitly flagged for unit tests)
+        if entry is None and self.allow_mock:
+            entry, fallback_used = self.mock_adapter.synthesize_scene(
                 scene_id=scene_id, text=text, language=language, output_path=out_file
             )
 
-        # 4. Strict Failure: No tones, no silence, no English substitution
-        lang_names = {"hi": "Hindi", "ta": "Tamil", "te": "Telugu", "kn": "Kannada", "en": "English"}
-        display_name = lang_names.get(lang, language.upper())
-        raise MissingLocalVoiceError(
-            f"No genuine local speech voice installed for {display_name} ('{language}'). "
-            f"Placeholder waveforms, tones, and cross-language English substitutions have been disabled to preserve speech authenticity. "
-            f"To enable offline {display_name} audio, install the {display_name} speech pack in Windows Settings "
-            f"> Time & Language > Speech > 'Add voices' > '{display_name}', or download a local ONNX model into "
-            f"backend/app/services/tts/voices/{lang}_IN/."
-        )
+        # 5. Strict Failure: No tones, no silence, no English substitution
+        if entry is None:
+            lang_names = {"hi": "Hindi", "ta": "Tamil", "te": "Telugu", "kn": "Kannada", "en": "English"}
+            display_name = lang_names.get(lang, language.upper())
+            raise MissingLocalVoiceError(
+                f"No genuine local speech voice installed for {display_name} ('{language}'). "
+                f"Placeholder waveforms, tones, and cross-language English substitutions have been disabled to preserve speech authenticity. "
+                f"To enable offline {display_name} audio, install the {display_name} speech pack in Windows Settings "
+                f"> Time & Language > Speech > 'Add voices' > '{display_name}', or download a local ONNX model into "
+                f"backend/app/services/tts/voices/{lang}_IN/."
+            )
+
+        # Save to disk cache for future reuse
+        try:
+            shutil.copyfile(out_file, cached_wav)
+            cached_meta.write_text(
+                json.dumps({
+                    "duration_seconds": entry.duration_seconds,
+                    "voice_id": entry.voice_id,
+                    "sample_rate": entry.sample_rate,
+                    "fallback_used": fallback_used,
+                }),
+                encoding="utf-8"
+            )
+        except Exception:
+            pass
+
+        return entry, fallback_used
 
     def synthesize(
         self, text: str, language: str, scene_id: str = "temp", output_path: Optional[Path] = None, voice_id: Optional[str] = None
@@ -572,15 +639,6 @@ class LocalTTSDispatcher:
         scene_id = output_path.stem
         entry, _ = self.synthesize_scene(scene_id=scene_id, text=text, language=language, voice_id=voice_id)
         if Path(entry.audio_file) != output_path and Path(entry.audio_file).exists():
-            import shutil
-            shutil.copyfile(entry.audio_file, output_path)
-            entry.audio_file = str(output_path.as_posix())
-        return entry
-        """Helper allowing direct text synthesis into a specific output path."""
-        scene_id = output_path.stem
-        entry, _ = self.synthesize_scene(scene_id=scene_id, text=text, language=language)
-        if Path(entry.audio_file) != output_path and Path(entry.audio_file).exists():
-            import shutil
             shutil.copyfile(entry.audio_file, output_path)
             entry.audio_file = str(output_path.as_posix())
         return entry
@@ -613,3 +671,26 @@ class LocalTTSDispatcher:
         )
         manifest.compute_global_timeline()
         return manifest
+
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """Returns audio cache hit/miss statistics and cached item count."""
+        cached_wavs = list(self.cache_dir.glob("*.wav"))
+        return {
+            "cached_entries_count": len(cached_wavs),
+            "cache_hits": self.cache_hits,
+            "cache_misses": self.cache_misses,
+            "cache_dir": str(self.cache_dir.as_posix()),
+        }
+
+    def clear_audio_cache(self) -> int:
+        """Clears all cached audio files and returns count removed."""
+        count = 0
+        for f in self.cache_dir.glob("*.*"):
+            try:
+                f.unlink()
+                count += 1
+            except Exception:
+                pass
+        self.cache_hits = 0
+        self.cache_misses = 0
+        return count

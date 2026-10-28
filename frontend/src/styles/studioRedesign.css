@@ -1,0 +1,633 @@
+/* =========================================================================
+   BLU VISUAL TEACHER — APPROVED UI SCREEN REDESIGN (UI screen.jpeg)
+   ========================================================================= */
+
+.bvt-studio-dark-theme {
+  --bvt-screen-bg: #0B1120;
+  --bvt-topbar-bg: #121927;
+  --bvt-subnav-bg: #0D1525;
+  --bvt-sidebar-bg: #0D1525;
+  --bvt-card-border: #1E293B;
+  --bvt-gold-accent: #E89C13;
+  --bvt-gold-btn: #E59F26;
+  --bvt-chalk-green: #234E3B;
+  --bvt-chalk-wood: #734524;
+}
+
+/* App Outer Shell in Studio View */
+.bvt-studio-app {
+  background-color: #0B1120 !important;
+  color: #F8FAFC !important;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Top Global Navigation Bar */
+.bvt-studio-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+  padding: 0 16px;
+  background-color: #121927;
+  border-bottom: 1px solid #1E293B;
+  box-sizing: border-box;
+  z-index: 50;
+}
+
+.bvt-studio-logo {
+  font-family: var(--bvt-font-hand, 'Caveat', cursive, sans-serif);
+  font-size: 22px;
+  font-weight: 700;
+  color: #F6AD55;
+  text-decoration: none;
+  cursor: pointer;
+  letter-spacing: -0.2px;
+}
+
+.bvt-studio-search-group {
+  display: flex;
+  align-items: center;
+  max-width: 580px;
+  flex: 1;
+  margin: 0 24px;
+}
+
+.bvt-studio-search-input {
+  flex: 1;
+  height: 32px;
+  background-color: #1E293B;
+  border: 1px solid #334155;
+  border-radius: 4px 0 0 4px;
+  padding: 0 12px;
+  color: #F8FAFC;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.bvt-studio-search-input:focus {
+  border-color: #F59E0B;
+}
+
+.bvt-studio-start-btn {
+  height: 32px;
+  padding: 0 16px;
+  background-color: #E59F26;
+  border: 1px solid #E59F26;
+  border-radius: 0 4px 4px 0;
+  color: #0F172A;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease;
+}
+
+.bvt-studio-start-btn:hover {
+  background-color: #D97706;
+}
+
+.bvt-studio-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bvt-studio-offline-pill {
+  padding: 4px 10px;
+  border: 1px solid #F59E0B;
+  border-radius: 4px;
+  background: transparent;
+  color: #F59E0B;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.bvt-studio-icon-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1E293B;
+  border: 1px solid #334155;
+  border-radius: 4px;
+  color: #94A3B8;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.bvt-studio-icon-btn:hover {
+  color: #F8FAFC;
+  border-color: #475569;
+}
+
+/* Secondary Filter Bar (SUBJECT | LEVEL | LANGUAGE) */
+.bvt-studio-subnav {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px 8px 72px; /* Offset for sidebar */
+  background-color: #0D1525;
+  border-bottom: 1px solid #1E293B;
+  gap: 24px;
+  overflow-x: auto;
+}
+
+.bvt-studio-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bvt-studio-filter-label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #64748B;
+}
+
+.bvt-studio-filter-row {
+  display: flex;
+  align-items: center;
+  background: #151E2E;
+  border: 1px solid #243044;
+  border-radius: 4px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.bvt-studio-filter-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: #94A3B8;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.bvt-studio-filter-btn:hover {
+  color: #F8FAFC;
+}
+
+.bvt-studio-filter-btn.active {
+  background-color: #E59F26;
+  color: #0F172A;
+  font-weight: 700;
+}
+
+/* Studio Main Workspace (Sidebar + Main View) */
+.bvt-studio-workspace {
+  display: flex;
+  flex: 1;
+  min-height: calc(100vh - 98px);
+}
+
+/* Icon Sidebar (Home, Create, Hallway) */
+.bvt-studio-sidebar {
+  width: 56px;
+  background-color: #0D1525;
+  border-right: 1px solid #1E293B;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 12px;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.bvt-studio-side-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  color: #64748B;
+  cursor: pointer;
+  padding: 6px;
+  width: 48px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.bvt-studio-side-item:hover {
+  color: #CBD5E1;
+  background: #172033;
+}
+
+.bvt-studio-side-item.active {
+  color: #F59E0B;
+}
+
+.bvt-studio-side-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+/* Center Content: Left Player Stage + Right Scenes List */
+.bvt-studio-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 24px 32px 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.bvt-studio-duration-row {
+  margin-bottom: 12px;
+}
+
+.bvt-studio-duration-select {
+  background: #151E2E;
+  border: 1px solid #243044;
+  color: #CBD5E1;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+}
+
+.bvt-studio-stage-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) 280px;
+  gap: 20px;
+  align-items: start;
+}
+
+/* Chalkboard Frame Surrounding Player Stage */
+.bvt-studio-board-frame {
+  background: linear-gradient(135deg, #7A4B29 0%, #543118 45%, #2B180B 100%);
+  padding: 12px;
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.15);
+  position: relative;
+}
+
+.bvt-studio-board-surface {
+  background: radial-gradient(ellipse at 50% 40%, #254D38 0%, #1A3928 65%, #0F2318 100%);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.7);
+}
+
+/* Integrated In-Frame Player Controls Bar */
+.bvt-studio-inboard-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: rgba(14, 28, 20, 0.95);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 12px;
+}
+
+.bvt-studio-inboard-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bvt-studio-inboard-btn {
+  background: transparent;
+  border: none;
+  color: #E2E8F0;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: color 0.15s ease;
+}
+
+.bvt-studio-inboard-btn:hover {
+  color: #F59E0B;
+}
+
+.bvt-studio-inboard-time {
+  font-size: 11px;
+  font-family: var(--blu-font-mono, monospace);
+  font-weight: 600;
+  color: #CBD5E1;
+}
+
+.bvt-studio-inboard-timeline {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.bvt-studio-inboard-slider {
+  width: 100%;
+  height: 4px;
+  background: #334155;
+  accent-color: #E59F26;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.bvt-studio-inboard-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bvt-studio-inboard-tag {
+  font-size: 11px;
+  font-weight: 800;
+  color: #94A3B8;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+}
+
+.bvt-studio-inboard-tag.active {
+  color: #0F172A;
+  background: #E59F26;
+}
+
+/* Right Scenes Playlist Panel */
+.bvt-studio-scenes-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bvt-studio-scenes-heading {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #64748B;
+  margin-bottom: 2px;
+}
+
+.bvt-studio-scene-item {
+  display: flex;
+  align-items: center;
+  background: #131E2F;
+  border: 1px solid #1E293B;
+  border-radius: 6px;
+  padding: 6px;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.bvt-studio-scene-item:hover {
+  border-color: #334155;
+  background: #172437;
+}
+
+.bvt-studio-scene-item.active {
+  border-color: #38BDF8;
+  background: #152238;
+}
+
+.bvt-studio-scene-thumb {
+  width: 80px;
+  height: 45px;
+  background: #1E3D2B;
+  border-radius: 3px;
+  border: 1px solid #2B573D;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+}
+
+.bvt-studio-scene-thumb-text {
+  font-family: var(--bvt-font-hand, 'Caveat', cursive, sans-serif);
+  font-size: 10px;
+  color: #FEF08A;
+  text-align: center;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.bvt-studio-scene-thumb-dur {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #F8FAFC;
+  font-size: 8px;
+  font-family: monospace;
+  padding: 1px 3px;
+  border-radius: 2px;
+}
+
+.bvt-studio-scene-meta {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bvt-studio-scene-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #F8FAFC;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bvt-studio-scene-status {
+  font-size: 10px;
+  color: #64748B;
+}
+
+.bvt-studio-scene-item.active .bvt-studio-scene-status {
+  color: #38BDF8;
+  font-weight: 600;
+}
+
+/* Bottom Lesson Info & Action Bar */
+.bvt-studio-bottom-section {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bvt-studio-bottom-title {
+  font-family: var(--bvt-font-display, serif);
+  font-size: 20px;
+  font-weight: 700;
+  color: #F8FAFC;
+  margin: 0;
+}
+
+.bvt-studio-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.bvt-studio-teacher-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bvt-studio-avatar {
+  width: 40px;
+  height: 40px;
+  background: #F59E0B;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.bvt-studio-teacher-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #F8FAFC;
+}
+
+.bvt-studio-teacher-sub {
+  font-size: 11px;
+  color: #94A3B8;
+}
+
+.bvt-studio-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bvt-studio-dl-btn {
+  padding: 8px 16px;
+  background-color: #E59F26;
+  border: 1px solid #E59F26;
+  border-radius: 4px;
+  color: #0F172A;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.bvt-studio-dl-btn:hover {
+  background-color: #D97706;
+}
+
+.bvt-studio-secondary-btn {
+  padding: 8px 14px;
+  background-color: #1E293B;
+  border: 1px solid #334155;
+  border-radius: 4px;
+  color: #CBD5E1;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.bvt-studio-secondary-btn:hover {
+  background-color: #334155;
+  color: #F8FAFC;
+}
+
+.bvt-studio-secondary-btn.active {
+  background-color: #0F766E;
+  border-color: #14B8A6;
+  color: #FFFFFF;
+}
+
+/* Bottom Tab Bar (Overview | Notes | Details) */
+.bvt-studio-tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  border-bottom: 1px solid #1E293B;
+  margin-top: 8px;
+}
+
+.bvt-studio-bottom-tab {
+  padding: 8px 0;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #64748B;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.bvt-studio-bottom-tab:hover {
+  color: #CBD5E1;
+}
+
+.bvt-studio-bottom-tab.active {
+  color: #F8FAFC;
+  border-bottom-color: #E59F26;
+}
+
+/* Bottom Metadata Details Box */
+.bvt-studio-overview-box {
+  background: #131E2F;
+  border: 1px solid #1E293B;
+  border-radius: 6px;
+  padding: 14px 18px;
+  margin-top: 12px;
+}
+
+.bvt-studio-overview-meta {
+  font-size: 12px;
+  font-weight: 700;
+  color: #94A3B8;
+  margin-bottom: 6px;
+}
+
+.bvt-studio-overview-text {
+  font-size: 13px;
+  color: #CBD5E1;
+  line-height: 1.5;
+}

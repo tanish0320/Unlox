@@ -28,7 +28,14 @@ ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from backend.app.schemas.provisional_lesson import LessonPlan
+from backend.app.schemas.provisional_lesson import (
+    LessonPlan,
+    LessonPart,
+    BaseScene,
+    TitleCardScene,
+    DiagramScene,
+    CodeWalkthroughScene,
+)
 from backend.app.schemas.audio_manifest import AudioManifest, SceneAudioEntry, CaptionSegment
 from backend.app.schemas.lesson_notes import LessonNotes
 from backend.app.services.planner.ollama_planner import OllamaLessonPlanner
@@ -75,6 +82,29 @@ class GenerateRequest(BaseModel):
     language: str = Field(default="en")
     target_duration_seconds: int = Field(default=60, ge=30, le=300)
     voice_id: Optional[str] = Field(default=None, description="Optional chosen TTS voice or persona")
+
+
+class SceneUpdateRequest(BaseModel):
+    heading: Optional[str] = None
+    narration: Optional[str] = None
+    part_id: Optional[str] = None
+    # Diagram fields
+    items: Optional[List[str]] = None
+    layout: Optional[str] = None
+    diagram_type: Optional[str] = None
+    # Code walkthrough fields
+    code: Optional[str] = None
+    code_language: Optional[str] = None
+    highlight_lines: Optional[List[int]] = None
+    expected_output: Optional[str] = None
+    # Title card fields
+    subtitle: Optional[str] = None
+    key_points: Optional[List[str]] = None
+
+
+class ReorderScenesRequest(BaseModel):
+    part_scene_mapping: Optional[Dict[str, List[str]]] = None
+    scene_order: Optional[List[str]] = None
 
 
 def run_lesson_pipeline(job_id: str, lesson_id: str, req: GenerateRequest):
@@ -336,18 +366,354 @@ def get_sample_lesson():
     }
 
 
-@app.get("/api/lessons/{lesson_id}")
-def get_lesson(lesson_id: str):
-    """Retrieves the canonical LessonPlan data."""
+def load_lesson(lesson_id: str) -> LessonPlan:
+    """Loads a LessonPlan from memory or disk, validating schema and populating parts."""
+    if lesson_id in ("sample_en", "sample") or lesson_id.startswith("sample"):
+        sample_path = ROOT_DIR / "outputs" / "integration_fixtures" / "en" / "lesson_plan.json"
+        if sample_path.is_file():
+            plan_dict = json.loads(sample_path.read_text(encoding="utf-8"))
+            return LessonPlan.model_validate(plan_dict)
+
     if lesson_id in LESSON_STORE:
         return LESSON_STORE[lesson_id]
 
-    # Check disk
     plan_path = OUTPUTS_DIR / lesson_id / "lesson_plan.json"
     if plan_path.is_file():
-        return json.loads(plan_path.read_text(encoding="utf-8"))
+        plan_dict = json.loads(plan_path.read_text(encoding="utf-8"))
+        lesson = LessonPlan.model_validate(plan_dict)
+        LESSON_STORE[lesson_id] = lesson
+        return lesson
 
-    raise HTTPException(status_code=404, detail="Lesson not found")
+    raise HTTPException(status_code=404, detail=f"Lesson '{lesson_id}' not found")
+
+
+def load_manifest(lesson_id: str) -> AudioManifest:
+    """Loads an AudioManifest from memory or disk."""
+    if lesson_id in ("sample_en", "sample") or lesson_id.startswith("sample"):
+        sample_path = ROOT_DIR / "outputs" / "integration_fixtures" / "en" / "audio_manifest.json"
+        if sample_path.is_file():
+            man_dict = json.loads(sample_path.read_text(encoding="utf-8"))
+            return AudioManifest.model_validate(man_dict)
+
+    if lesson_id in MANIFEST_STORE:
+        return MANIFEST_STORE[lesson_id]
+
+    man_path = OUTPUTS_DIR / lesson_id / "audio_manifest.json"
+    if man_path.is_file():
+        man_dict = json.loads(man_path.read_text(encoding="utf-8"))
+        manifest = AudioManifest.model_validate(man_dict)
+        MANIFEST_STORE[lesson_id] = manifest
+        return manifest
+
+    raise HTTPException(status_code=404, detail=f"Audio manifest for '{lesson_id}' not found")
+
+
+@app.get("/api/lessons/{lesson_id}")
+def get_lesson(lesson_id: str):
+    """Retrieves the canonical LessonPlan data with modular parts."""
+    return load_lesson(lesson_id)
+
+
+@app.get("/api/lessons/{lesson_id}/parts/{part_id}")
+def get_lesson_part(lesson_id: str, part_id: str):
+    """Retrieves an individual lesson part with its contained scenes and computed duration."""
+    lesson = load_lesson(lesson_id)
+    part = next((p for p in lesson.parts if p.part_id == part_id), None)
+    if not part:
+        raise HTTPException(status_code=404, detail=f"Part '{part_id}' not found in lesson '{lesson_id}'")
+
+    scenes = [s for s in lesson.scenes if s.id in part.scene_ids]
+    duration = 0.0
+    try:
+        manifest = load_manifest(lesson_id)
+        sub_man = manifest.create_sub_manifest(part.scene_ids)
+        duration = sub_man.total_timeline_duration_seconds or sub_man.total_duration_seconds
+    except Exception:
+        duration = float(len(scenes) * 30.0)
+
+    return {
+        "part": part,
+        "scenes": scenes,
+        "duration_seconds": round(duration, 3),
+        "scene_count": len(scenes),
+    }
+
+
+@app.post("/api/lessons/{lesson_id}/parts/{part_id}/export")
+def export_part_video(lesson_id: str, part_id: str):
+    """Exports an individual part to video independently without losing the rest of the lesson."""
+    lesson = load_lesson(lesson_id)
+    manifest = load_manifest(lesson_id)
+    part = next((p for p in lesson.parts if p.part_id == part_id), None)
+    if not part:
+        raise HTTPException(status_code=404, detail=f"Part '{part_id}' not found")
+
+    part_scenes = [s for s in lesson.scenes if s.id in part.scene_ids]
+    if not part_scenes:
+        raise HTTPException(status_code=400, detail=f"No scenes found in part '{part_id}'")
+
+    sub_manifest = manifest.create_sub_manifest(part.scene_ids)
+    sub_lesson = lesson.model_copy(update={
+        "title": f"{lesson.title} - {part.title}",
+        "scenes": part_scenes,
+        "parts": [part]
+    })
+
+    lesson_dir = OUTPUTS_DIR / lesson_id
+    lesson_dir.mkdir(parents=True, exist_ok=True)
+    out_part_mp4 = lesson_dir / f"{lesson_id}_{part_id}.mp4"
+    out_part_srt = lesson_dir / f"{lesson_id}_{part_id}.srt"
+
+    generate_srt_file(sub_manifest, out_part_srt)
+    export_mp4_video(
+        lesson_plan=sub_lesson,
+        manifest=sub_manifest,
+        workspace_root=ROOT_DIR,
+        output_mp4_path=out_part_mp4,
+        fps=25,
+    )
+
+    return {
+        "status": "success",
+        "lesson_id": lesson_id,
+        "part_id": part_id,
+        "duration_seconds": sub_manifest.total_timeline_duration_seconds,
+        "video_url": f"/api/lessons/{lesson_id}/parts/{part_id}/video",
+        "srt_url": f"/api/lessons/{lesson_id}/parts/{part_id}/captions",
+    }
+
+
+@app.get("/api/lessons/{lesson_id}/parts/{part_id}/video")
+def get_part_video(lesson_id: str, part_id: str):
+    """Streams or downloads an exported part MP4 video."""
+    video_path = OUTPUTS_DIR / lesson_id / f"{lesson_id}_{part_id}.mp4"
+    if not video_path.is_file():
+        raise HTTPException(status_code=404, detail=f"Exported video for part '{part_id}' not found")
+    return FileResponse(str(video_path), media_type="video/mp4", filename=f"{lesson_id}_{part_id}.mp4")
+
+
+@app.get("/api/lessons/{lesson_id}/parts/{part_id}/captions")
+def get_part_captions(lesson_id: str, part_id: str):
+    """Downloads the SRT caption file for an exported part."""
+    srt_path = OUTPUTS_DIR / lesson_id / f"{lesson_id}_{part_id}.srt"
+    if not srt_path.is_file():
+        raise HTTPException(status_code=404, detail=f"SRT captions for part '{part_id}' not found")
+    return FileResponse(str(srt_path), media_type="text/plain", filename=f"{lesson_id}_{part_id}.srt")
+
+
+@app.put("/api/lessons/{lesson_id}/scenes/{scene_id}")
+def update_scene(lesson_id: str, scene_id: str, update: SceneUpdateRequest):
+    """
+    Updates scene properties with selective invalidation:
+    - Narration text edits re-synthesize audio for this scene only, preserving unchanged scenes.
+    - Visual-only edits update immediately without TTS synthesis or LLM calls.
+    """
+    lesson = load_lesson(lesson_id)
+    manifest = load_manifest(lesson_id)
+
+    scene = next((s for s in lesson.scenes if s.id == scene_id), None)
+    if not scene:
+        raise HTTPException(status_code=404, detail=f"Scene '{scene_id}' not found in lesson")
+
+    # Store original values on first edit for reset support
+    if not scene.is_edited:
+        scene.original_heading = scene.heading
+        scene.original_narration = scene.narration
+
+    narration_changed = False
+    if update.narration is not None and update.narration.strip() != scene.narration.strip():
+        narration_changed = True
+        scene.narration = update.narration.strip()
+
+    if update.heading is not None:
+        scene.heading = update.heading.strip()
+
+    if update.part_id is not None and update.part_id != scene.part_id:
+        old_part_id = scene.part_id
+        scene.part_id = update.part_id
+        for p in lesson.parts:
+            if p.part_id == old_part_id and scene.id in p.scene_ids:
+                p.scene_ids.remove(scene.id)
+            if p.part_id == update.part_id and scene.id not in p.scene_ids:
+                p.scene_ids.append(scene.id)
+
+    # Visual field updates
+    if isinstance(scene, DiagramScene):
+        if update.items is not None:
+            scene.items = update.items
+        if update.layout in ["horizontal", "vertical", "cycle"]:
+            scene.layout = update.layout
+        if update.diagram_type in ["flowchart", "number_line", "fraction_bar", "proportion_table", "science_diagram"]:
+            scene.diagram_type = update.diagram_type
+
+    elif isinstance(scene, CodeWalkthroughScene):
+        if update.code is not None:
+            scene.code = update.code
+        if update.code_language is not None:
+            scene.code_language = update.code_language
+        if update.highlight_lines is not None:
+            scene.highlight_lines = update.highlight_lines
+        if update.expected_output is not None:
+            scene.expected_output = update.expected_output
+
+    elif isinstance(scene, TitleCardScene):
+        if update.subtitle is not None:
+            scene.subtitle = update.subtitle
+        if update.key_points is not None:
+            scene.key_points = update.key_points
+
+    scene.is_edited = True
+
+    # Selective TTS invalidation
+    audio_rebuilt = False
+    if narration_changed:
+        lesson_dir = OUTPUTS_DIR / lesson_id
+        audio_dir = lesson_dir / "audio"
+        audio_dir.mkdir(parents=True, exist_ok=True)
+        wav_path = audio_dir / f"{scene.id}_{lesson.language}.wav"
+
+        tts = LocalTTSDispatcher(output_dir=audio_dir, use_system_tts=True)
+        tts_res = tts.synthesize_speech(
+            text=scene.narration,
+            language=lesson.language,
+            output_path=wav_path,
+        )
+        audio_rebuilt = True
+
+        for entry in manifest.entries:
+            if entry.scene_id == scene.id:
+                entry.duration_seconds = tts_res.duration_seconds
+                entry.voice_id = tts_res.voice_id
+                entry.sample_rate = tts_res.sample_rate
+                entry.fallback_used = tts_res.fallback_used
+                entry.caption_segments = [
+                    CaptionSegment(
+                        start_seconds=0.0,
+                        end_seconds=tts_res.duration_seconds,
+                        text=scene.narration,
+                    )
+                ]
+                break
+
+        manifest.compute_global_timeline()
+        manifest.total_duration_seconds = round(sum(e.duration_seconds for e in manifest.entries), 3)
+
+    # Persist updated artifacts
+    lesson_dir = OUTPUTS_DIR / lesson_id
+    lesson_dir.mkdir(parents=True, exist_ok=True)
+    (lesson_dir / "lesson_plan.json").write_text(lesson.model_dump_json(indent=2), encoding="utf-8")
+    (lesson_dir / "audio_manifest.json").write_text(manifest.model_dump_json(indent=2), encoding="utf-8")
+
+    LESSON_STORE[lesson_id] = lesson
+    MANIFEST_STORE[lesson_id] = manifest
+
+    return {
+        "status": "success",
+        "scene_id": scene_id,
+        "is_edited": True,
+        "audio_rebuilt": audio_rebuilt,
+        "scene": scene,
+        "total_timeline_duration": manifest.total_timeline_duration_seconds,
+    }
+
+
+@app.post("/api/lessons/{lesson_id}/scenes/{scene_id}/reset")
+def reset_scene(lesson_id: str, scene_id: str):
+    """Resets a modified scene back to its original heading and narration script."""
+    lesson = load_lesson(lesson_id)
+    scene = next((s for s in lesson.scenes if s.id == scene_id), None)
+    if not scene:
+        raise HTTPException(status_code=404, detail=f"Scene '{scene_id}' not found")
+
+    if not scene.is_edited:
+        return {"status": "unchanged", "message": "Scene was not modified"}
+
+    if scene.original_heading:
+        scene.heading = scene.original_heading
+    if scene.original_narration:
+        scene.narration = scene.original_narration
+    scene.is_edited = False
+
+    lesson_dir = OUTPUTS_DIR / lesson_id
+    audio_dir = lesson_dir / "audio"
+    audio_dir.mkdir(parents=True, exist_ok=True)
+    wav_path = audio_dir / f"{scene.id}_{lesson.language}.wav"
+
+    tts = LocalTTSDispatcher(output_dir=audio_dir, use_system_tts=True)
+    tts_res = tts.synthesize_speech(
+        text=scene.narration,
+        language=lesson.language,
+        output_path=wav_path,
+    )
+
+    manifest = load_manifest(lesson_id)
+    for entry in manifest.entries:
+        if entry.scene_id == scene.id:
+            entry.duration_seconds = tts_res.duration_seconds
+            entry.caption_segments = [
+                CaptionSegment(start_seconds=0.0, end_seconds=tts_res.duration_seconds, text=scene.narration)
+            ]
+            break
+
+    manifest.compute_global_timeline()
+    (lesson_dir / "lesson_plan.json").write_text(lesson.model_dump_json(indent=2), encoding="utf-8")
+    (lesson_dir / "audio_manifest.json").write_text(manifest.model_dump_json(indent=2), encoding="utf-8")
+
+    return {"status": "success", "scene": scene}
+
+
+@app.post("/api/lessons/{lesson_id}/scenes/reorder")
+def reorder_scenes(lesson_id: str, req: ReorderScenesRequest):
+    """Reorders scenes within parts or across parts and updates audio timeline."""
+    lesson = load_lesson(lesson_id)
+    manifest = load_manifest(lesson_id)
+
+    scene_map = {s.id: s for s in lesson.scenes}
+    entry_map = {e.scene_id: e for e in manifest.entries}
+
+    if req.part_scene_mapping:
+        new_scene_order = []
+        for p in lesson.parts:
+            if p.part_id in req.part_scene_mapping:
+                p.scene_ids = req.part_scene_mapping[p.part_id]
+                for sid in p.scene_ids:
+                    if sid in scene_map:
+                        scene_map[sid].part_id = p.part_id
+                        new_scene_order.append(sid)
+        if new_scene_order:
+            lesson.scenes = [scene_map[sid] for sid in new_scene_order if sid in scene_map]
+            manifest.entries = [entry_map[sid] for sid in new_scene_order if sid in entry_map]
+
+    elif req.scene_order:
+        lesson.scenes = [scene_map[sid] for sid in req.scene_order if sid in scene_map]
+        manifest.entries = [entry_map[sid] for sid in req.scene_order if sid in entry_map]
+        for p in lesson.parts:
+            p.scene_ids = [sid for sid in req.scene_order if getattr(scene_map.get(sid), "part_id", None) == p.part_id]
+
+    manifest.compute_global_timeline()
+
+    lesson_dir = OUTPUTS_DIR / lesson_id
+    (lesson_dir / "lesson_plan.json").write_text(lesson.model_dump_json(indent=2), encoding="utf-8")
+    (lesson_dir / "audio_manifest.json").write_text(manifest.model_dump_json(indent=2), encoding="utf-8")
+
+    return {"status": "success", "lesson": lesson, "manifest": manifest}
+
+
+@app.get("/api/pipeline/timing-baseline")
+def get_pipeline_timing():
+    """Returns timing profiling and TTS cache diagnostics."""
+    tts = LocalTTSDispatcher()
+    cache_stats = tts.get_cache_stats()
+    return {
+        "status": "healthy",
+        "cache_stats": cache_stats,
+        "optimizations_enabled": [
+            "sha256_audio_caching",
+            "selective_scene_invalidation",
+            "independent_part_video_export",
+            "sub_manifest_assembly",
+        ]
+    }
 
 
 @app.get("/api/lessons/{lesson_id}/manifest")

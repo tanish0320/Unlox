@@ -7,11 +7,23 @@ export type LessonLevel =
   | "beginner"
   | "intermediate";
 
+export interface LessonPart {
+  part_id: string;
+  part_number: number;
+  title: string;
+  description?: string;
+  scene_ids: string[];
+}
+
 export interface BaseScene {
   id: string;
   type: SceneType;
   heading: string;
   narration: string;
+  part_id?: string;
+  is_edited?: boolean;
+  original_heading?: string;
+  original_narration?: string;
 }
 
 export interface TitleCardScene extends BaseScene {
@@ -117,6 +129,7 @@ export interface LessonPlan {
   source_language?: string;
   topic?: string;
   target_duration_seconds?: number;
+  parts?: LessonPart[];
   scenes: LessonScene[];
   summary?: string;
   learning_objectives?: string[];
