@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 import { SceneRenderer } from "./components/scenes/SceneRenderer";
 
@@ -25,6 +25,7 @@ import "./styles/fonts.css";
 import "./styles/sceneTokens.css";
 import { BluAcademyView, GameLaunchPayload } from "./game";
 import { ChalkboardLanding } from "./components/ChalkboardLanding";
+import { ProjectLandingPage } from "./components/ProjectLandingPage";
 import { SceneEditor } from "./components/SceneEditor";
 import { WhatIfLabModal } from "./components/WhatIfLab";
 import { StudioRedesignLayout } from "./components/StudioRedesignLayout";
@@ -209,7 +210,7 @@ export const App: React.FC = () => {
 
   const handleSkipIntro = () => {
     setShowIntro(false);
-    setActiveView("academy");
+    setActiveView("landing");
     try {
       sessionStorage.setItem("bvt_intro_seen", "1");
     } catch {
@@ -218,7 +219,7 @@ export const App: React.FC = () => {
   };
 
   // App Navigation & Gamification Integration State
-  const [activeView, setActiveView] = useState<"academy" | "studio">(() => {
+  const [activeView, setActiveView] = useState<"landing" | "academy" | "studio">(() => {
     if (typeof window === "undefined") return "studio";
     if ((import.meta as any).env?.MODE === "test") return "studio";
     const params = new URLSearchParams(window.location.search);
@@ -230,7 +231,11 @@ export const App: React.FC = () => {
     ) {
       return "studio";
     }
-    return "academy";
+    if (params.get("view") === "academy") {
+      return "academy";
+    }
+    // Default entry route opens the project landing dashboard
+    return "landing";
   });
   const [isEditorOpen, setIsEditorOpen] = useState<boolean>(false);
   const [isWhatIfLabOpen, setIsWhatIfLabOpen] = useState<boolean>(false);
@@ -946,64 +951,78 @@ export const App: React.FC = () => {
           />
         </div>
       )}
+
+      {/* Project Landing Showcase View */}
+      {activeView === "landing" && (
+        <div style={{ minHeight: "100vh", backgroundColor: "#080D1A" }}>
+          <ProjectLandingPage
+            onEnterAcademy={() => setActiveView("academy")}
+            onCreateLesson={() => setActiveView("studio")}
+            onReplayIntroAnimation={() => setShowIntro(true)}
+          />
+        </div>
+      )}
+
       {/* Studio Redesign Layout matching UI screen.jpeg */}
-      <StudioRedesignLayout
-        topic={topic}
-        setTopic={setTopic}
-        level={level}
-        setLevel={setLevel}
-        language={language}
-        handleLanguageChange={handleLanguageChange}
-        duration={duration}
-        setDuration={setDuration}
-        activeCategory={activeCategory}
-        setActiveCategory={setActiveCategory}
-        isGenerating={isGenerating}
-        jobProgress={jobProgress}
-        stepLabel={stepLabel}
-        handleGenerate={handleGenerate}
-        handleKeyDown={handleKeyDown}
-        lessonPlan={lessonPlan}
-        audioManifest={audioManifest}
-        studyNotes={studyNotes}
-        currentSceneIdx={currentSceneIdx}
-        setCurrentSceneIdx={setCurrentSceneIdx}
-        sceneTime={sceneTime}
-        setSceneTime={setSceneTime}
-        isPlaying={isPlaying}
-        togglePlay={togglePlay}
-        isMuted={isMuted}
-        toggleMute={toggleMute}
-        captionsVisible={captionsVisible}
-        setCaptionsVisible={setCaptionsVisible}
-        isFullscreen={isFullscreen}
-        toggleFullscreen={toggleFullscreen}
-        controlsVisible={controlsVisible}
-        handleUserActivity={handleUserActivity}
-        playerContainerRef={playerContainerRef}
-        audioRef={audioRef}
-        handleTimeUpdate={handleTimeUpdate}
-        handleAudioEnded={handleAudioEnded}
-        videoUrl={videoUrl}
-        captionsUrl={captionsUrl}
-        notesUrl={notesUrl}
-        pdfUrl={pdfUrl}
-        activeLessonId={activeLessonId}
-        isDarkMode={isDarkMode}
-        setIsDarkMode={setIsDarkMode}
-        fontScaleIdx={fontScaleIdx}
-        setFontScaleIdx={setFontScaleIdx}
-        fontScales={fontScales}
-        activeView={activeView}
-        setActiveView={setActiveView}
-        isSampleDemo={isSampleDemo}
-        setIsEditorOpen={setIsEditorOpen}
-        setIsWhatIfLabOpen={setIsWhatIfLabOpen}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        lastLaunchedSubject={lastLaunchedSubject}
-        formatTime={formatTime}
-      />
+      {activeView === "studio" && (
+        <StudioRedesignLayout
+          topic={topic}
+          setTopic={setTopic}
+          level={level}
+          setLevel={setLevel}
+          language={language}
+          handleLanguageChange={handleLanguageChange}
+          duration={duration}
+          setDuration={setDuration}
+          activeCategory={activeCategory}
+          setActiveCategory={setActiveCategory}
+          isGenerating={isGenerating}
+          jobProgress={jobProgress}
+          stepLabel={stepLabel}
+          handleGenerate={handleGenerate}
+          handleKeyDown={handleKeyDown}
+          lessonPlan={lessonPlan}
+          audioManifest={audioManifest}
+          studyNotes={studyNotes}
+          currentSceneIdx={currentSceneIdx}
+          setCurrentSceneIdx={setCurrentSceneIdx}
+          sceneTime={sceneTime}
+          setSceneTime={setSceneTime}
+          isPlaying={isPlaying}
+          togglePlay={togglePlay}
+          isMuted={isMuted}
+          toggleMute={toggleMute}
+          captionsVisible={captionsVisible}
+          setCaptionsVisible={setCaptionsVisible}
+          isFullscreen={isFullscreen}
+          toggleFullscreen={toggleFullscreen}
+          controlsVisible={controlsVisible}
+          handleUserActivity={handleUserActivity}
+          playerContainerRef={playerContainerRef}
+          audioRef={audioRef}
+          handleTimeUpdate={handleTimeUpdate}
+          handleAudioEnded={handleAudioEnded}
+          videoUrl={videoUrl}
+          captionsUrl={captionsUrl}
+          notesUrl={notesUrl}
+          pdfUrl={pdfUrl}
+          activeLessonId={activeLessonId}
+          isDarkMode={isDarkMode}
+          setIsDarkMode={setIsDarkMode}
+          fontScaleIdx={fontScaleIdx}
+          setFontScaleIdx={setFontScaleIdx}
+          fontScales={fontScales}
+          activeView={activeView}
+          setActiveView={setActiveView}
+          isSampleDemo={isSampleDemo}
+          setIsEditorOpen={setIsEditorOpen}
+          setIsWhatIfLabOpen={setIsWhatIfLabOpen}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          lastLaunchedSubject={lastLaunchedSubject}
+          formatTime={formatTime}
+        />
+      )}
       {isEditorOpen && lessonPlan && (
         <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", zIndex: 9000 }}>
           <SceneEditor

@@ -63,10 +63,14 @@ async function main() {
   console.log(`[Remotion Engine] Target: 1280x720 @ ${fps}fps | Duration: ${totalDurationSec.toFixed(2)}s (${durationInFrames} frames)`);
 
   const entryPoint = path.resolve(FRONTEND_DIR, "src", "remotion", "index.ts");
+  const bundleCacheDir = path.resolve(ROOT_DIR, "outputs", "cache", "remotion_bundle");
+  fs.mkdirSync(bundleCacheDir, { recursive: true });
+
   console.log(`[Remotion Engine] Bundling Remotion composition from: ${entryPoint}...`);
 
   const bundleLocation = await bundle({
     entryPoint,
+    outDir: bundleCacheDir,
     webpackOverride: (config) => config,
   });
 
@@ -95,8 +99,11 @@ async function main() {
     codec: "h264",
     outputLocation: targetRenderOut,
     inputProps: props,
+    concurrency: 4,
+    disallowParallelEncoding: false,
     chromiumOptions: {
       headless: true,
+      gl: "angle",
     },
     onProgress: ({ renderedFrames, encodedFrames, progress }) => {
       const pct = (progress * 100).toFixed(1);

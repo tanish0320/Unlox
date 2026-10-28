@@ -179,7 +179,15 @@ def run_lesson_pipeline(job_id: str, lesson_id: str, req: GenerateRequest):
         global_cursor = 0.0
         padding = 0.3
 
+        total_scenes = len(lesson.scenes)
         for i, scene in enumerate(lesson.scenes):
+            pct = 40 + int(((i + 1) / total_scenes) * 30)
+            JOB_STORE[job_id]["step"] = "synthesizing_audio"
+            JOB_STORE[job_id]["percent"] = pct
+            JOB_STORE[job_id]["step_label"] = f"Synthesizing voice narration ({i + 1}/{total_scenes} scenes)..."
+            JOB_STORE[job_id]["completed_scenes"] = i + 1
+            JOB_STORE[job_id]["total_scenes"] = total_scenes
+
             wav_path = audio_dir / f"{scene.id}_{lesson.language}.wav"
             tts_res = tts.synthesize_speech(
                 text=scene.narration,

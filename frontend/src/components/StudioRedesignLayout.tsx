@@ -51,8 +51,8 @@ interface StudioRedesignLayoutProps {
   fontScaleIdx: number;
   setFontScaleIdx: (fn: (prev: number) => number) => void;
   fontScales: string[];
-  activeView: "academy" | "studio";
-  setActiveView: (v: "academy" | "studio") => void;
+  activeView: "landing" | "academy" | "studio";
+  setActiveView: (v: "landing" | "academy" | "studio") => void;
   isSampleDemo: boolean;
   setIsEditorOpen: (o: boolean) => void;
   setIsWhatIfLabOpen: (o: boolean) => void;
@@ -293,8 +293,8 @@ export const StudioRedesignLayout: React.FC<StudioRedesignLayoutProps> = (props)
           <button
             type="button"
             className="bvt-studio-side-item"
-            onClick={() => setActiveView("studio")}
-            title="Home"
+            onClick={() => setActiveView("landing")}
+            title="Home / Project Showcase"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -386,15 +386,104 @@ export const StudioRedesignLayout: React.FC<StudioRedesignLayoutProps> = (props)
                         <div
                           style={{
                             display: "flex",
+                            flexDirection: "column",
                             alignItems: "center",
                             justifyContent: "center",
                             height: 380,
-                            color: "#FEF08A",
-                            fontFamily: "var(--bvt-font-hand, cursive)",
-                            fontSize: 24,
+                            padding: 24,
+                            textAlign: "center",
                           }}
                         >
-                          {isGenerating ? `Generating lesson... (${stepLabel})` : "Ready to start lesson"}
+                          {isGenerating ? (
+                            <div
+                              style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                gap: 14,
+                                background: "#0F172A",
+                                border: "1px solid #1E293B",
+                                borderRadius: 12,
+                                padding: "24px 32px",
+                                maxWidth: 440,
+                                width: "90%",
+                                boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: 36,
+                                  height: 36,
+                                  border: "3px solid #334155",
+                                  borderTopColor: "#E59F26",
+                                  borderRadius: "50%",
+                                  animation: "spin 0.8s linear infinite",
+                                }}
+                              />
+                              <div
+                                style={{
+                                  fontSize: 18,
+                                  fontWeight: 800,
+                                  color: "#F8FAFC",
+                                  fontFamily: "var(--bvt-font-sans, sans-serif)",
+                                  letterSpacing: "-0.2px",
+                                }}
+                              >
+                                Creating your lesson
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: 13,
+                                  color: "#94A3B8",
+                                  textAlign: "center",
+                                  lineHeight: 1.4,
+                                }}
+                              >
+                                {stepLabel}
+                              </div>
+                              {/* Progress bar */}
+                              <div
+                                style={{
+                                  width: "100%",
+                                  height: 6,
+                                  backgroundColor: "#1E293B",
+                                  borderRadius: 9999,
+                                  overflow: "hidden",
+                                  marginTop: 4,
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    height: "100%",
+                                    width: `${Math.max(10, Math.min(100, jobProgress))}%`,
+                                    backgroundColor: "#E59F26",
+                                    borderRadius: 9999,
+                                    transition: "width 0.4s ease",
+                                  }}
+                                />
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  color: "#E59F26",
+                                  fontFamily: "monospace",
+                                }}
+                              >
+                                {jobProgress}% complete
+                              </div>
+                            </div>
+                          ) : (
+                            <div
+                              style={{
+                                color: "#FEF08A",
+                                fontFamily: "var(--bvt-font-hand, cursive)",
+                                fontSize: 26,
+                              }}
+                            >
+                              Ready to start lesson
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -591,12 +680,32 @@ export const StudioRedesignLayout: React.FC<StudioRedesignLayoutProps> = (props)
                   Download MP4
                 </a>
 
+                {/* PDF Study Notes Download */}
+                <a
+                  href={pdfUrl || (activeLessonId ? `/api/lessons/${activeLessonId}/notes/pdf` : "#")}
+                  download={`${activeLessonId}_study_notes.pdf`}
+                  className="bvt-studio-secondary-btn"
+                  title="Download Formatted PDF Study Notes"
+                >
+                  📄 Notes (PDF)
+                </a>
+
+                {/* JSON Study Notes Download */}
+                <a
+                  href={notesUrl ? `${notesUrl}?download=true` : (activeLessonId ? `/api/lessons/${activeLessonId}/notes?download=true` : "#")}
+                  download={`${activeLessonId}_notes.json`}
+                  className="bvt-studio-secondary-btn"
+                  title="Download Structured Study Notes in JSON format"
+                >
+                  📋 Notes (JSON)
+                </a>
+
                 <button
                   type="button"
                   className={`bvt-studio-secondary-btn ${activeTab === "notes" ? "active" : ""}`}
                   onClick={() => setActiveTab(activeTab === "notes" ? "video" : "notes")}
                 >
-                  Notes
+                  Notes Preview
                 </button>
 
                 <a
